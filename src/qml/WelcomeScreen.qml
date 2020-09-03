@@ -132,7 +132,7 @@ Page {
             id: rectangle
             property string path: ProjectPath
             property var type: ProjectType
-            width: parent.width
+            width: parent ? parent.width : undefined
             height: line.height
             color: "transparent"
 

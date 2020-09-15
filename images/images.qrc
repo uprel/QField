@@ -5,6 +5,7 @@
         <file alias="opengis-logo.svg">icons/openGIS-logo-round-green.svg</file>
         <file alias="karma-logo.svg">icons/karma-logo.svg</file>
         <file alias="qfieldcloud-logo.png">icons/qfieldcloud-logo.png</file>
+        <file alias="sparkleSize.png">icons/sparkleSize.png</file>
     </qresource>
     <qresource prefix="/pictures">
         <file alias="qfield-love.png">pictures/qfield-love.png</file>

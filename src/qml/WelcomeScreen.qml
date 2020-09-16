@@ -276,11 +276,11 @@ Page {
     }
   }
 
-  // Easteregg
+  // Sparkles & unicorns
   Rectangle {
     anchors.fill: parent
     color: "#00000000"
-    visible: imageDialLogo.value == 0
+    visible: imageDialLogo.value < 0.1
 
     MouseArea {
       id: mouseArea
@@ -307,12 +307,12 @@ Page {
 
     ParticleSystem {
       id: particles
-      running: imageDialLogo.value == 0
+      running: imageDialLogo.value < 0.1
     }
 
     ParticleSystem {
       id: unicorns
-      running: imageDialLogo.value == 0
+      running: imageDialLogo.value < 0.1
     }
 
     ImageParticle {

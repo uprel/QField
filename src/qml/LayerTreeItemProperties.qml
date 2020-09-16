@@ -153,6 +153,7 @@ Popup {
         Layout.margins: 10
         height: 1
         color: Theme.lightGray
+        visible: collapseButtonVisible
       }
 
       QfButton {

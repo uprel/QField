@@ -104,16 +104,22 @@ Popup {
               font: Theme.tipFont
           }
 
-          Image {
+          Rectangle {
             Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
             Layout.margins: 10
-            id: qfieldcloudLogo
-            source: 'qrc:/images/qfieldcloud-logo.png'
-            fillMode: Image.PreserveAspectFit
-            width: 28
-            height: 28
-            sourceSize.width: 48 * screen.devicePixelRatio
-            sourceSize.height: 48 * screen.devicePixelRatio
+            width: 48
+            height: 48
+
+            Image {
+              anchors.fill: parent
+              id: cloudAvatar
+              source: 'qrc:/images/qfieldcloud-logo.png'
+              width: 48
+              height: 48
+              sourceSize.width: 48 * screen.devicePixelRatio
+              sourceSize.height: 48 * screen.devicePixelRatio
+              fillMode: Image.PreserveAspectFit
+            }
           }
         }
 

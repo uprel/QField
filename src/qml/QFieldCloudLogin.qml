@@ -7,6 +7,7 @@ import Theme 1.0
 
 Item {
   id: qfieldcloudLogin
+  property bool isServerUrlEditingActive: false
 
   Column {
     id: connectionSettings
@@ -20,6 +21,11 @@ Item {
       source: "qrc:/images/qfieldcloud_logo.svg"
       sourceSize.width: 124
       sourceSize.height: 124
+
+      MouseArea {
+        anchors.fill: parent
+        onDoubleClicked: toggleServerUrlEditing()
+      }
     }
 
     Text {
@@ -33,6 +39,48 @@ Item {
       wrapMode: Text.WordWrap
 
       onLinkActivated: Qt.openUrlExternally(link)
+
+      MouseArea {
+        anchors.fill: parent
+        onDoubleClicked: toggleServerUrlEditing()
+      }
+    }
+
+    Text {
+      id: serverUrlLabel
+      width: parent.width
+      visible: cloudConnection.status === QFieldCloudConnection.Disconnected
+               && ( cloudConnection.url !== cloudConnection.defaultUrl || isServerUrlEditingActive )
+      text: qsTr( "Server URL. Empty to use the default." )
+      horizontalAlignment: Text.AlignHCenter
+      font: Theme.defaultFont
+      color: 'gray'
+    }
+
+    TextField {
+      id: serverUrlField
+      width: parent.width / 1.3
+      anchors.horizontalCenter: parent.horizontalCenter
+      visible: cloudConnection.status === QFieldCloudConnection.Disconnected
+               && ( cloudConnection.url !== cloudConnection.defaultUrl || isServerUrlEditingActive )
+      enabled: visible
+      height: Math.max(fontMetrics.height, fontMetrics.boundingRect(text).height) + 34
+      topPadding: 10
+      bottomPadding: 10
+      font: Theme.defaultFont
+      horizontalAlignment: Text.AlignHCenter
+      text: cloudConnection.url === cloudConnection.defaultUrl ? '' : cloudConnection.url
+      background: Rectangle {
+        y: serverUrlField.height - height * 2 - serverUrlField.bottomPadding / 2
+        implicitWidth: 120
+        height: serverUrlField.activeFocus ? 2 : 1
+        color: serverUrlField.activeFocus ? "#4CAF50" : "#C8E6C9"
+      }
+
+      Keys.onReturnPressed: loginFormSumbitHandler()
+      Keys.onReleased: {
+        cloudConnection.url = text ? text : cloudConnection.defaultUrl
+      }
     }
 
     Text {
@@ -131,5 +179,14 @@ Item {
       cloudConnection.password = passwordField.text
       cloudConnection.login()
     }
+  }
+
+  function toggleServerUrlEditing() {
+    if ( cloudConnection.url != cloudConnection.defaultUrl ) {
+      isServerUrlEditingActive = true
+      return
+    }
+
+    isServerUrlEditingActive = !isServerUrlEditingActive
   }
 }

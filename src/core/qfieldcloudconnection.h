@@ -50,12 +50,26 @@ class QFieldCloudConnection : public QObject
     Q_PROPERTY( QString username READ username WRITE setUsername NOTIFY usernameChanged )
     Q_PROPERTY( QString password READ password WRITE setPassword NOTIFY passwordChanged )
     Q_PROPERTY( QString url READ url WRITE setUrl NOTIFY urlChanged )
+    Q_PROPERTY( QString defaultUrl READ defaultUrl CONSTANT )
+
     Q_PROPERTY( ConnectionStatus status READ status NOTIFY statusChanged )
     Q_PROPERTY( ConnectionState state READ state NOTIFY stateChanged )
-    Q_PROPERTY( bool hasToken READ hasToken  NOTIFY tokenChanged )
+    Q_PROPERTY( bool hasToken READ hasToken NOTIFY tokenChanged )
 
+    /**
+     * Returns the currently set server connection URL.
+     */
     QString url() const;
+
+    /**
+     * Sets the current server connection URL and saves it into QSettings.
+     */
     void setUrl( const QString &url );
+
+    /**
+     * Default server connection URL, pointing to the production server.
+     */
+    static QString defaultUrl();
 
     QString username() const;
     void setUsername( const QString &username );

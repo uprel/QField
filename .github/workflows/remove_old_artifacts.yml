@@ -3,7 +3,7 @@ name: Remove old artifacts
 on:
   schedule:
     # Every 10 minutes
-    - cron: '*/10 * * * *'
+    - cron: '20 * * * *'
 
 jobs:
   remove_old_artifacts:

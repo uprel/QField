@@ -88,13 +88,13 @@ class DeltaFileWrapper : public QObject
     /**
      * @brief Get a pair of the index and the name of the primary key column of given \a vl layer. We assume there is no multi-column primary key.
      */
-    static QPair<int, QString> getPkAttribute( const QgsVectorLayer *vl );
+    static QPair<int, QString> getLocalPkAttribute( const QgsVectorLayer *vl );
 
 
     /**
      * @brief Get a pair of the index and the name of the primary key column of given \a vl layer, as they were before offline editing.
      */
-    static QPair<int, QString> getCloudPkAttribute( const QgsVectorLayer *vl );
+    static QPair<int, QString> getSourcePkAttribute( const QgsVectorLayer *vl );
 
 
     /**
@@ -232,10 +232,10 @@ class DeltaFileWrapper : public QObject
      *
      * @param layerId layer ID where the old feature belongs to
      * @param localPkAttrName attribute name of the primary key
-     * @param cloudPkAttrName attribute name of the primary key
+     * @param sourcePkAttrName attribute name of the primary key
      * @param newFeature the feature that has been created
      */
-    void addCreate( const QString &layerId, const QString &localPkAttrName, const QString &cloudPkAttrName, const QgsFeature &newFeature );
+    void addCreate( const QString &layerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &newFeature );
 
 
     /**
@@ -243,10 +243,10 @@ class DeltaFileWrapper : public QObject
      *
      * @param layerId layer ID where the old feature belongs to
      * @param localPkAttrName attribute name of the primary key
-     * @param cloudPkAttrName attribute name of the primary key
+     * @param sourcePkAttrName attribute name of the primary key
      * @param oldFeature the feature that has been deleted
      */
-    void addDelete( const QString &layerId, const QString &localPkAttrName, const QString &cloudPkAttrName, const QgsFeature &oldFeature );
+    void addDelete( const QString &layerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature );
 
 
     /**
@@ -254,11 +254,11 @@ class DeltaFileWrapper : public QObject
      *
      * @param layerId layer ID where the old feature belongs to
      * @param localPkAttrName attribute name of the primary key
-     * @param cloudPkAttrName attribute name of the primary key
+     * @param sourcePkAttrName attribute name of the primary key
      * @param oldFeature the old version of the feature that has been modified
      * @param newFeature the new version of the feature that has been modified
      */
-    void addPatch( const QString &layerId, const QString &localPkAttrName, const QString &cloudPkAttrName, const QgsFeature &oldFeature, const QgsFeature &newFeature );
+    void addPatch( const QString &layerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature, const QgsFeature &newFeature );
 
 
     /**

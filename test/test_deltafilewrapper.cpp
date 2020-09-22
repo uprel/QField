@@ -868,6 +868,43 @@ class TestDeltaFileWrapper: public QObject
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( "[]" ) );
     }
 
+    void testAddDeleteWithStringPk()
+    {
+        DeltaFileWrapper dfw( mProject, QString( std::tmpnam( nullptr ) ) );
+        QgsFeature f( mLayer->fields(), 100 );
+        f.setAttribute( QStringLiteral( "fid" ), 100 );
+        f.setAttribute( QStringLiteral( "dbl" ), 3.14 );
+        f.setAttribute( QStringLiteral( "int" ), 42 );
+        f.setAttribute( QStringLiteral( "str" ), QStringLiteral( "stringy" ) );
+        f.setAttribute( QStringLiteral( "attachment" ), std::tmpnam( nullptr ) );
+        f.setGeometry( QgsGeometry() );
+
+        dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "str" ), f );
+
+        QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( QStringLiteral( R""""(
+          [
+            {
+              "fid": "stringy",
+              "layerId": "dummyLayerId1",
+              "method": "delete",
+              "old": {
+                "attributes": {
+                  "attachment": "%1",
+                  "dbl": 3.14,
+                  "fid": 100,
+                  "int": 42,
+                  "str": "stringy"
+                },
+                "files_sha256": {
+                  "%1": null
+                },
+                "geometry": null
+              },
+              "tmpFid": "100"
+            }
+          ]
+        )"""" ).arg( f.attribute( QStringLiteral( "attachment" ) ).toString() ).toUtf8() ) );
+    }
 
     void testAddDelete()
     {
@@ -908,7 +945,6 @@ class TestDeltaFileWrapper: public QObject
           }
         ]
       )"""" ).arg( mAttachmentFileName, mAttachmentFileChecksum ).toUtf8() ) );
-
 
       // Check if creates delta of a feature with a NULL geometry and non existant attachment.
       // NOTE this is the same as calling f clearGeometry()

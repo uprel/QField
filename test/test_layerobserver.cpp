@@ -27,21 +27,21 @@ class TestLayerObserver: public QObject
   private slots:
     void initTestCase()
     {
-      mLayer.reset( new QgsVectorLayer( QStringLiteral( "Point?crs=EPSG:3857&field=int:integer&field=str:string" ), QStringLiteral( "int" ), QStringLiteral( "memory" ) ) );
+      mLayer.reset( new QgsVectorLayer( QStringLiteral( "Point?crs=EPSG:3857&field=fid:integer&field=str:string" ), QStringLiteral( "int" ), QStringLiteral( "memory" ) ) );
       mLayer->setCustomProperty( "QFieldSync/action", QStringLiteral( "CLOUD" ) );
 
       QVERIFY( mLayer->isValid() );
 
       QgsFeature f1( mLayer->fields() );
-      f1.setAttribute( QStringLiteral( "int" ), 1 );
+      f1.setAttribute( QStringLiteral( "fid" ), 1 );
       f1.setAttribute( QStringLiteral( "str" ), "string1" );
       f1.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
       QgsFeature f2( mLayer->fields() );
-      f2.setAttribute( QStringLiteral( "int" ), 2 );
+      f2.setAttribute( QStringLiteral( "fid" ), 2 );
       f2.setAttribute( QStringLiteral( "str" ), "string2" );
       f2.setGeometry( QgsGeometry( new QgsPoint( 23.398819, 41.7672147 ) ) );
       QgsFeature f3( mLayer->fields() );
-      f3.setAttribute( QStringLiteral( "int" ), 3 );
+      f3.setAttribute( QStringLiteral( "fid" ), 3 );
       f3.setAttribute( QStringLiteral( "str" ), "string3" );
 
       QVERIFY( mLayer->startEditing() );
@@ -104,7 +104,7 @@ class TestLayerObserver: public QObject
       QString oldIdCommittedDeltaFile = getId( committedDeltaFileName );
 
       QgsFeature f1( mLayer->fields() );
-      f1.setAttribute( QStringLiteral( "int" ), 1000 );
+      f1.setAttribute( QStringLiteral( "fid" ), 1000 );
       f1.setAttribute( QStringLiteral( "str" ), "new_string1" );
       f1.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
 
@@ -125,7 +125,7 @@ class TestLayerObserver: public QObject
     void testClear()
     {
       QgsFeature f1( mLayer->fields() );
-      f1.setAttribute( QStringLiteral( "int" ), 1000 );
+      f1.setAttribute( QStringLiteral( "fid" ), 1000 );
       f1.setAttribute( QStringLiteral( "str" ), "new_string1" );
       f1.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
 
@@ -135,7 +135,7 @@ class TestLayerObserver: public QObject
       QCOMPARE( getDeltaOperations( mLayerObserver->generateDeltaFileName( true ) ).size(), 1 );
 
       QgsFeature f2( mLayer->fields() );
-      f2.setAttribute( QStringLiteral( "int" ), 1001 );
+      f2.setAttribute( QStringLiteral( "fid" ), 1001 );
       f2.setAttribute( QStringLiteral( "str" ), "new_string2" );
       f2.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
 
@@ -155,7 +155,7 @@ class TestLayerObserver: public QObject
     void testObservesEditingStopped()
     {
       QgsFeature f1( mLayer->fields() );
-      f1.setAttribute( QStringLiteral( "int" ), 1002 );
+      f1.setAttribute( QStringLiteral( "fid" ), 1002 );
       f1.setAttribute( QStringLiteral( "str" ), "new_string" );
       f1.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
 
@@ -172,7 +172,7 @@ class TestLayerObserver: public QObject
     void testObservesAdded()
     {
       QgsFeature f1( mLayer->fields() );
-      f1.setAttribute( QStringLiteral( "int" ), 1003 );
+      f1.setAttribute( QStringLiteral( "fid" ), 1003 );
       f1.setAttribute( QStringLiteral( "str" ), "new_string" );
       f1.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
 

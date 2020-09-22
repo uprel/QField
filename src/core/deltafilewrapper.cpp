@@ -906,6 +906,10 @@ QPair<int, QString> DeltaFileWrapper::getPkAttribute( const QgsVectorLayer *vl )
   const QList<int> pkAttrs = vl->primaryKeyAttributes() << fields.indexFromName( QStringLiteral( "fid" ) );
   // we assume the first index to be the primary key index... kinda stupid, but memory layers don't have primary key at all, but we use it on geopackages, but... snap!
   const int pkAttrIdx = pkAttrs[0];
+
+  if ( pkAttrIdx == -1 )
+    return QPair<int, QString>();
+
   const QString pkAttrName = fields.at( pkAttrIdx ).name();
 
   return QPair<int, QString>( pkAttrIdx, pkAttrName );

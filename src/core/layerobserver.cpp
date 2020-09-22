@@ -140,6 +140,7 @@ void LayerObserver::onHomePathChanged()
 
 void LayerObserver::onLayersAdded( const QList<QgsMapLayer *> layers )
 {
+  Q_UNUSED( layers );
   addLayerListeners();
 }
 
@@ -189,11 +190,12 @@ void LayerObserver::onCommittedFeaturesAdded( const QString &layerId, const QgsF
     return;
 
   const QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( sender() );
-  const QPair<int, QString> pkAttrPair = DeltaFileWrapper::getPkAttribute( vl );
+  const QPair<int, QString> cloudPkAttrPair = DeltaFileWrapper::getCloudPkAttribute( vl );
+  const QPair<int, QString> localPkAttrPair = DeltaFileWrapper::getPkAttribute( vl );
 
   for ( const QgsFeature &newFeature : addedFeatures )
   {
-    mCurrentDeltaFileWrapper->addCreate( layerId, pkAttrPair.second, newFeature );
+    mCurrentDeltaFileWrapper->addCreate( layerId, localPkAttrPair.second, cloudPkAttrPair.second, newFeature );
   }
 }
 
@@ -206,14 +208,15 @@ void LayerObserver::onCommittedFeaturesRemoved( const QString &layerId, const Qg
     return;
 
   const QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( sender() );
-  const QPair<int, QString> pkAttrPair = DeltaFileWrapper::getPkAttribute( vl );
+  const QPair<int, QString> localPkAttrPair = DeltaFileWrapper::getPkAttribute( vl );
+  const QPair<int, QString> cloudPkAttrPair = DeltaFileWrapper::getCloudPkAttribute( vl );
 
   for ( const QgsFeatureId &fid : deletedFeatureIds )
   {
     Q_ASSERT( changedFeatures.contains( fid ) );
 
     QgsFeature oldFeature = changedFeatures.take( fid );
-    mCurrentDeltaFileWrapper->addDelete( layerId, pkAttrPair.second, oldFeature );
+    mCurrentDeltaFileWrapper->addDelete( layerId, localPkAttrPair.second, cloudPkAttrPair.second, oldFeature );
   }
 
   mChangedFeatures.insert( layerId, changedFeatures );
@@ -226,7 +229,8 @@ void LayerObserver::onCommittedAttributeValuesChanges( const QString &layerId, c
   QgsFeatureIds patchedFids = mPatchedFids.value( layerId );
   QgsChangedFeatures changedFeatures = mChangedFeatures.value( layerId );
   const QgsFeatureIds changedAttributesValuesFids = qgis::listToSet( changedAttributesValues.keys() );
-  const QPair<int, QString> pkAttrPair = DeltaFileWrapper::getPkAttribute( vl );
+  const QPair<int, QString> localPkAttrPair = DeltaFileWrapper::getPkAttribute( vl );
+  const QPair<int, QString> cloudPkAttrPair = DeltaFileWrapper::getCloudPkAttribute( vl );
 
   if ( mCommittedDeltaFileWrapper->isDeltaBeingApplied() )
     return;
@@ -242,7 +246,7 @@ void LayerObserver::onCommittedAttributeValuesChanges( const QString &layerId, c
 
     QgsFeature oldFeature = changedFeatures.take( fid );
     QgsFeature newFeature = vl->getFeature( fid );
-    mCurrentDeltaFileWrapper->addPatch( layerId, pkAttrPair.second, oldFeature, newFeature );
+    mCurrentDeltaFileWrapper->addPatch( layerId, localPkAttrPair.second, cloudPkAttrPair.second, oldFeature, newFeature );
   }
 
   mPatchedFids.insert( layerId, patchedFids );
@@ -256,7 +260,8 @@ void LayerObserver::onCommittedGeometriesChanges( const QString &layerId, const 
   QgsFeatureIds patchedFids = mPatchedFids.value( layerId );
   QgsChangedFeatures changedFeatures = mChangedFeatures.value( layerId );
   const QgsFeatureIds changedGeometriesFids = qgis::listToSet( changedGeometries.keys() );
-  const QPair<int, QString> pkAttrPair = DeltaFileWrapper::getPkAttribute( vl );
+  const QPair<int, QString> localPkAttrPair = DeltaFileWrapper::getPkAttribute( vl );
+  const QPair<int, QString> cloudPkAttrPair = DeltaFileWrapper::getCloudPkAttribute( vl );
 
   if ( mCommittedDeltaFileWrapper->isDeltaBeingApplied() )
     return;
@@ -273,7 +278,7 @@ void LayerObserver::onCommittedGeometriesChanges( const QString &layerId, const 
     QgsFeature oldFeature = changedFeatures.take( fid );
     QgsFeature newFeature = vl->getFeature( fid );
 
-    mCurrentDeltaFileWrapper->addPatch( layerId, pkAttrPair.second, oldFeature, newFeature );
+    mCurrentDeltaFileWrapper->addPatch( layerId, localPkAttrPair.second, cloudPkAttrPair.second, oldFeature, newFeature );
   }
 
   mPatchedFids.insert( layerId, patchedFids );
@@ -315,7 +320,7 @@ void LayerObserver::addLayerListeners()
       if ( !vl->readOnly() && QFieldCloudUtils::isCloudAction( vl ) )
       {
         // Ignore all layers that cannot determine a primary key column
-        if ( DeltaFileWrapper::getPkAttribute(vl).first == -1 )
+        if ( DeltaFileWrapper::getCloudPkAttribute(vl).first == -1 )
         {
           QgsLogger::warning( QStringLiteral( "Failed to find a primary key column in layer \"%1\"" ).arg( layer->name() ) );
           continue;

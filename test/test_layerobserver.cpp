@@ -27,8 +27,9 @@ class TestLayerObserver: public QObject
   private slots:
     void initTestCase()
     {
-      mLayer.reset( new QgsVectorLayer( QStringLiteral( "Point?crs=EPSG:3857&field=fid:integer&field=str:string" ), QStringLiteral( "int" ), QStringLiteral( "memory" ) ) );
-      mLayer->setCustomProperty( "QFieldSync/action", QStringLiteral( "CLOUD" ) );
+      mLayer.reset( new QgsVectorLayer( QStringLiteral( "Point?crs=EPSG:3857&field=fid:integer&field=str:string" ), QStringLiteral( "Test Layer" ), QStringLiteral( "memory" ) ) );
+      mLayer->setCustomProperty( QStringLiteral( "QFieldSync/action" ), QStringLiteral( "CLOUD" ) );
+      mLayer->setCustomProperty( QStringLiteral( "QFieldSync/cloudPrimaryKey" ), QStringLiteral( "fid" ) );
 
       QVERIFY( mLayer->isValid() );
 

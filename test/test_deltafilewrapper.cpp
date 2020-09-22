@@ -248,7 +248,7 @@ class TestDeltaFileWrapper: public QObject
     void testReset()
     {
       DeltaFileWrapper dfw( mProject, QString( std::tmpnam( nullptr ) ) );
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QgsFeature() );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), QgsFeature() );
 
       QCOMPARE( getDeltasArray( dfw.toString() ).size(), 1 );
 
@@ -256,7 +256,7 @@ class TestDeltaFileWrapper: public QObject
 
       QCOMPARE( getDeltasArray( dfw.toString() ).size(), 0 );
 
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QgsFeature() );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), QgsFeature() );
 
       QCOMPARE( getDeltasArray( dfw.toString() ).size(), 1 );
     }
@@ -268,7 +268,7 @@ class TestDeltaFileWrapper: public QObject
 
       QCOMPARE( getDeltasArray( dfw.toString() ).size(), 0 );
 
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QgsFeature() );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), QgsFeature() );
 
       const QString dfwId = dfw.id();
       dfw.resetId();
@@ -286,11 +286,11 @@ class TestDeltaFileWrapper: public QObject
 
       QgsFeature f1( fields, 100 );
       f1.setAttribute( "fid", 100 );
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), f1 );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f1 );
 
       QgsFeature f2( fields, 101 );
       f2.setAttribute( "fid", 101 );
-      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), f2 );
+      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f2 );
 
       QJsonDocument doc = normalizeSchema( dfw.toString() );
 
@@ -300,7 +300,7 @@ class TestDeltaFileWrapper: public QObject
         {
           "deltas": [
             {
-              "fid": 100,
+              "fid": "100",
               "layerId": "dummyLayerId1",
               "method": "create",
               "new": {
@@ -308,10 +308,11 @@ class TestDeltaFileWrapper: public QObject
                   "fid": 100
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "100"
             },
             {
-              "fid": 101,
+              "fid": "101",
               "layerId": "dummyLayerId1",
               "method": "delete",
               "old": {
@@ -319,7 +320,8 @@ class TestDeltaFileWrapper: public QObject
                   "fid": 101
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "101"
             }
           ],
           "files":[],
@@ -339,11 +341,11 @@ class TestDeltaFileWrapper: public QObject
 
       QgsFeature f1( fields, 100 );
       f1.setAttribute( "fid", 100 );
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), f1 );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f1 );
 
       QgsFeature f2( fields, 101 );
       f2.setAttribute( "fid", 101 );
-      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), f2 );
+      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f2 );
 
       QJsonDocument doc = normalizeSchema( QString( dfw.toJson() ) );
 
@@ -353,7 +355,7 @@ class TestDeltaFileWrapper: public QObject
         {
           "deltas": [
             {
-              "fid": 100,
+              "fid": "100",
               "layerId": "dummyLayerId1",
               "method": "create",
               "new": {
@@ -361,10 +363,11 @@ class TestDeltaFileWrapper: public QObject
                   "fid": 100
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "100"
             },
             {
-              "fid": 101,
+              "fid": "101",
               "layerId": "dummyLayerId1",
               "method": "delete",
               "old": {
@@ -372,7 +375,8 @@ class TestDeltaFileWrapper: public QObject
                   "fid": 101
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "101"
             }
           ],
           "files":[],
@@ -399,7 +403,7 @@ class TestDeltaFileWrapper: public QObject
 
       QCOMPARE( dfw.isDirty(), false );
 
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QgsFeature() );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), QgsFeature() );
 
       QCOMPARE( dfw.isDirty(), true );
       QVERIFY( dfw.toFile() );
@@ -417,11 +421,11 @@ class TestDeltaFileWrapper: public QObject
 
       QCOMPARE( dfw.count(), 0 );
 
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QgsFeature() );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), QgsFeature() );
 
       QCOMPARE( dfw.count(), 1 );
 
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QgsFeature() );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), QgsFeature() );
 
       QCOMPARE( dfw.count(), 2 );
     }
@@ -438,12 +442,12 @@ class TestDeltaFileWrapper: public QObject
       QgsFeature f1( fields, 100 );
       f1.setAttribute( "fid", 100 );
 
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), f1 );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f1 );
 
       QCOMPARE( QJsonDocument( normalizeDeltasSchema( dfw.deltas() ) ), QJsonDocument::fromJson( R""""(
         [
           {
-            "fid": 100,
+            "fid": "100",
             "layerId": "dummyLayerId1",
             "method": "create",
             "new": {
@@ -451,19 +455,20 @@ class TestDeltaFileWrapper: public QObject
                 "fid": 100
               },
               "geometry": null
-            }
+            },
+            "tmpFid": "100"
           }
         ]
       )"""" ) );
 
       QgsFeature f2( fields, 101 );
       f2.setAttribute( "fid", 101 );
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), f2 );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f2 );
 
       QCOMPARE( QJsonDocument( normalizeDeltasSchema( dfw.deltas() ) ), QJsonDocument::fromJson( R""""(
         [
           {
-            "fid": 100,
+            "fid": "100",
             "layerId": "dummyLayerId1",
             "method": "create",
             "new": {
@@ -471,10 +476,11 @@ class TestDeltaFileWrapper: public QObject
                 "fid": 100
               },
               "geometry": null
-            }
+            },
+            "tmpFid": "100"
           },
           {
-            "fid": 101,
+            "fid": "101",
             "layerId": "dummyLayerId1",
             "method": "create",
             "new": {
@@ -482,7 +488,8 @@ class TestDeltaFileWrapper: public QObject
                 "fid": 101
               },
               "geometry": null
-            }
+            },
+            "tmpFid": "101"
           }
         ]
       )"""" ) );
@@ -493,7 +500,7 @@ class TestDeltaFileWrapper: public QObject
     {
       QString fileName = std::tmpnam( nullptr );
       DeltaFileWrapper dfw1( mProject, fileName );
-      dfw1.addCreate( mLayer->id(), QStringLiteral( "fid" ), QgsFeature() );
+      dfw1.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), QgsFeature() );
 
       QVERIFY( ! dfw1.hasError() );
       QCOMPARE( getDeltasArray( dfw1.toString() ).size(), 1 );
@@ -510,7 +517,7 @@ class TestDeltaFileWrapper: public QObject
     {
       DeltaFileWrapper dfw1( mProject, QString( std::tmpnam( nullptr ) ) );
       DeltaFileWrapper dfw2( mProject, QString( std::tmpnam( nullptr ) ) );
-      dfw1.addCreate( mLayer->id(), QStringLiteral( "fid" ), QgsFeature( QgsFields(), 100 ) );
+      dfw1.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), QgsFeature( QgsFields(), 100 ) );
       dfw2.append( &dfw1 );
 
       QCOMPARE( dfw2.count(), 1 );
@@ -536,7 +543,7 @@ class TestDeltaFileWrapper: public QObject
         {
           "deltas": [
             {
-              "fid": 100,
+              "fid": "100",
               "layerId": "%1",
               "method": "create",
               "new": {
@@ -553,7 +560,7 @@ class TestDeltaFileWrapper: public QObject
               }
             },
             {
-              "fid": 102,
+              "fid": "102",
               "layerId": "%1",
               "method": "create",
               "new": {
@@ -570,7 +577,7 @@ class TestDeltaFileWrapper: public QObject
               }
             },
             {
-              "fid": 102,
+              "fid": "102",
               "layerId": "%1",
               "method": "patch",
               "new": {
@@ -628,12 +635,12 @@ class TestDeltaFileWrapper: public QObject
 
       // Check if creates delta of a feature with a geometry and existing attachment
       f.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), f );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( QStringLiteral( R""""(
         [
           {
-            "fid": 100,
+            "fid": "100",
             "layerId": "dummyLayerId1",
             "method": "create",
             "new": {
@@ -648,7 +655,8 @@ class TestDeltaFileWrapper: public QObject
                 "%1": "%2"
               },
               "geometry": "Point (25.96569999999999823 43.83559999999999945)"
-            }
+            },
+            "tmpFid": "100"
           }
         ]
       )"""" ).arg( mAttachmentFileName, mAttachmentFileChecksum ).toUtf8() ) );
@@ -659,12 +667,12 @@ class TestDeltaFileWrapper: public QObject
       dfw.reset();
       f.setGeometry( QgsGeometry() );
       f.setAttribute( QStringLiteral( "attachment" ), std::tmpnam( nullptr ) );
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), f );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( QStringLiteral( R""""(
         [
           {
-            "fid": 100,
+            "fid": "100",
             "layerId": "dummyLayerId1",
             "method": "create",
             "new": {
@@ -679,7 +687,8 @@ class TestDeltaFileWrapper: public QObject
                 "%1": null
               },
               "geometry": null
-            }
+            },
+            "tmpFid": "100"
           }
         ]
       )"""" ).arg( f.attribute( QStringLiteral( "attachment" ) ).toString() ).toUtf8() ) );
@@ -691,16 +700,16 @@ class TestDeltaFileWrapper: public QObject
       QgsFields fields;
       fields.append( QgsField( QStringLiteral( "fid" ), QVariant::Int ) );
 
-      f.setFields( fields, true );
-      f.setAttribute( QStringLiteral( "fid" ), 101 );
-      f.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
+      QgsFeature f1( fields, 101 );
+      f1.setAttribute( QStringLiteral( "fid" ), 101 );
+      f1.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
 
-      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), f );
+      dfw.addCreate( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f1 );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( R""""(
         [
           {
-            "fid": 101,
+            "fid": "101",
             "layerId": "dummyLayerId1",
             "method": "create",
             "new": {
@@ -708,7 +717,8 @@ class TestDeltaFileWrapper: public QObject
                 "fid": 101
               },
               "geometry": "Point (25.96569999999999823 43.83559999999999945)"
-            }
+            },
+            "tmpFid": "101"
           }
         ]
       )"""" ) );
@@ -736,12 +746,12 @@ class TestDeltaFileWrapper: public QObject
       oldFeature.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
       newFeature.setGeometry( QgsGeometry( new QgsPoint( 23.398819, 41.7672147 ) ) );
 
-      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), oldFeature, newFeature );
+      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), oldFeature, newFeature );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( QStringLiteral( R""""(
         [
           {
-            "fid": 100,
+            "fid": "100",
             "layerId": "dummyLayerId1",
             "method": "patch",
             "new": {
@@ -764,7 +774,8 @@ class TestDeltaFileWrapper: public QObject
                 "str": "stringy"
               },
               "geometry": "Point (25.96569999999999823 43.83559999999999945)"
-            }
+            },
+            "tmpFid": "100"
           }
         ]
       )"""" ).arg( mAttachmentFileName, mAttachmentFileChecksum ).toUtf8() ) );
@@ -776,12 +787,12 @@ class TestDeltaFileWrapper: public QObject
       newFeature.setAttribute( QStringLiteral( "attachment" ), std::tmpnam( nullptr ) );
       oldFeature.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
 
-      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), oldFeature, newFeature );
+      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), oldFeature, newFeature );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( QStringLiteral( R""""(
         [
           {
-            "fid": 100,
+            "fid": "100",
             "layerId": "dummyLayerId1",
             "method": "patch",
             "new": {
@@ -802,7 +813,8 @@ class TestDeltaFileWrapper: public QObject
                 "int": 42,
                 "str": "stringy"
               }
-            }
+            },
+            "tmpFid": "100"
           }
         ]
       )"""" ).arg( newFeature.attribute( "attachment" ).toString() ).toUtf8() ) );
@@ -813,7 +825,7 @@ class TestDeltaFileWrapper: public QObject
       newFeature.setGeometry( QgsGeometry() );
       oldFeature.setGeometry( QgsGeometry() );
 
-      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), oldFeature, newFeature );
+      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), oldFeature, newFeature );
 
       // Patch geometry only
       dfw.reset();
@@ -826,12 +838,12 @@ class TestDeltaFileWrapper: public QObject
       oldFeature.setAttribute( QStringLiteral( "attachment" ), QVariant() );
       oldFeature.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
 
-      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), oldFeature, newFeature );
+      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), oldFeature, newFeature );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( R""""(
         [
           {
-            "fid": 100,
+            "fid": "100",
             "layerId": "dummyLayerId1",
             "method": "patch",
             "new": {
@@ -839,7 +851,8 @@ class TestDeltaFileWrapper: public QObject
             },
             "old": {
               "geometry": "Point (25.96569999999999823 43.83559999999999945)"
-            }
+            },
+            "tmpFid": "100"
           }
         ]
       )"""" ) );
@@ -850,7 +863,7 @@ class TestDeltaFileWrapper: public QObject
       oldFeature.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
       newFeature.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
 
-      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), oldFeature, newFeature );
+      dfw.addPatch( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), oldFeature, newFeature );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( "[]" ) );
     }
@@ -870,12 +883,12 @@ class TestDeltaFileWrapper: public QObject
       f.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
       // ? why this is not working, as QgsPoint is QgsAbstractGeometry and there is example in the docs? https://qgis.org/api/classQgsFeature.html#a14dcfc99b476b613c21b8c35840ff388
       // f.setGeometry( QgsPoint( 25.9657, 43.8356 ) );
-      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), f );
+      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( QStringLiteral( R""""(
         [
           {
-            "fid": 100,
+            "fid": "100",
             "layerId": "dummyLayerId1",
             "method": "delete",
             "old": {
@@ -890,7 +903,8 @@ class TestDeltaFileWrapper: public QObject
                 "%1": "%2"
               },
               "geometry": "Point (25.96569999999999823 43.83559999999999945)"
-            }
+            },
+            "tmpFid": "100"
           }
         ]
       )"""" ).arg( mAttachmentFileName, mAttachmentFileChecksum ).toUtf8() ) );
@@ -901,12 +915,12 @@ class TestDeltaFileWrapper: public QObject
       dfw.reset();
       f.setGeometry( QgsGeometry() );
       f.setAttribute( QStringLiteral( "attachment" ), std::tmpnam( nullptr ) );
-      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), f );
+      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( QStringLiteral( R""""(
         [
           {
-            "fid": 100,
+            "fid": "100",
             "layerId": "dummyLayerId1",
             "method": "delete",
             "old": {
@@ -921,7 +935,8 @@ class TestDeltaFileWrapper: public QObject
                 "%1": null
               },
               "geometry": null
-            }
+            },
+            "tmpFid": "100"
           }
         ]
       )"""" ).arg( f.attribute( QStringLiteral( "attachment" ) ).toString() ).toUtf8() ) );
@@ -933,15 +948,16 @@ class TestDeltaFileWrapper: public QObject
       QgsFields fields;
       fields.append( QgsField( QStringLiteral( "fid" ), QVariant::Int ) );
 
-      f.setFields( fields, true );
-      f.setAttribute( QStringLiteral( "fid" ), 101 );
-      f.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
-      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), f );
+      QgsFeature f1( fields, 101 );
+
+      f1.setAttribute( QStringLiteral( "fid" ), 101 );
+      f1.setGeometry( QgsGeometry( new QgsPoint( 25.9657, 43.8356 ) ) );
+      dfw.addDelete( mLayer->id(), QStringLiteral( "fid" ), QStringLiteral( "fid" ), f1 );
 
       QCOMPARE( QJsonDocument( getDeltasArray( dfw.toString() ) ), QJsonDocument::fromJson( R""""(
         [
           {
-            "fid": 101,
+            "fid": "101",
             "layerId": "dummyLayerId1",
             "method": "delete",
             "old": {
@@ -949,7 +965,8 @@ class TestDeltaFileWrapper: public QObject
                 "fid": 101
               },
               "geometry": "Point (25.96569999999999823 43.83559999999999945)"
-            }
+            },
+            "tmpFid": "101"
           }
         ]
       )"""" ) );
@@ -978,9 +995,9 @@ class TestDeltaFileWrapper: public QObject
       QgsFeature f3( fields, 102 );
       f3.setAttribute( QStringLiteral( "fid" ), 102 );
 
-      dfw.addCreate( "dummyLayerId1", QStringLiteral( "fid" ), f1 );
-      dfw.addDelete( "dummyLayerId2", QStringLiteral( "fid" ), f2 );
-      dfw.addDelete( "dummyLayerId1", QStringLiteral( "fid" ), f3 );
+      dfw.addCreate( "dummyLayerId1", QStringLiteral( "fid" ), QStringLiteral( "fid" ), f1 );
+      dfw.addDelete( "dummyLayerId2", QStringLiteral( "fid" ), QStringLiteral( "fid" ), f2 );
+      dfw.addDelete( "dummyLayerId1", QStringLiteral( "fid" ), QStringLiteral( "fid" ), f3 );
 
       QJsonDocument doc = normalizeSchema( dfw.toString() );
 
@@ -989,7 +1006,7 @@ class TestDeltaFileWrapper: public QObject
         {
           "deltas": [
             {
-              "fid": 100,
+              "fid": "100",
               "layerId": "dummyLayerId1",
               "method": "create",
               "new": {
@@ -1000,10 +1017,11 @@ class TestDeltaFileWrapper: public QObject
                   "str": "stringy"
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "100"
             },
             {
-              "fid": 101,
+              "fid": "101",
               "layerId": "dummyLayerId2",
               "method": "delete",
               "old": {
@@ -1011,10 +1029,11 @@ class TestDeltaFileWrapper: public QObject
                   "fid": 101
                 },
                 "geometry": "Point (25.96569999999999823 43.83559999999999945)"
-              }
+              },
+              "tmpFid": "101"
             },
             {
-              "fid": 102,
+              "fid": "102",
               "layerId": "dummyLayerId1",
               "method": "delete",
               "old": {
@@ -1025,7 +1044,8 @@ class TestDeltaFileWrapper: public QObject
                   "str": null
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "102"
             }
           ],
           "files":[],
@@ -1046,13 +1066,14 @@ class TestDeltaFileWrapper: public QObject
         {
           "deltas": [
             {
-              "fid": 100,
+              "fid": "100",
               "layerId": "%1",
               "method": "create",
               "new": {
                 "attributes": {
                   "attachment": "FILE1.jpg",
                   "dbl": 3.14,
+                  "fid": 100,
                   "int": 42,
                   "str": "stringy"
                 },
@@ -1060,16 +1081,18 @@ class TestDeltaFileWrapper: public QObject
                   "FILE1.jpg": null
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "100"
             },
             {
-              "fid": 102,
+              "fid": "102",
               "layerId": "%1",
               "method": "create",
               "new": {
                 "attributes": {
                   "attachment": "FILE2.jpg",
                   "dbl": null,
+                  "fid": 102,
                   "int": null,
                   "str": null
                 },
@@ -1077,10 +1100,11 @@ class TestDeltaFileWrapper: public QObject
                   "FILE2.jpg": null
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "102"
             },
             {
-              "fid": 102,
+              "fid": "102",
               "layerId": "%1",
               "method": "patch",
               "new": {
@@ -1100,18 +1124,21 @@ class TestDeltaFileWrapper: public QObject
                   "FILE2.jpg": null
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "102"
             },
             {
-              "fid": 1,
+              "fid": "1",
               "layerId": "%1",
               "method": "delete",
               "old": {
                 "attachment": "%2",
                 "dbl": 3.14,
+                "fid": 1,
                 "int": 42,
                 "str": "stringy"
-              }
+              },
+              "tmpFid": "1"
             }
           ],
           "files": [],
@@ -1168,13 +1195,14 @@ class TestDeltaFileWrapper: public QObject
         {
           "deltas": [
             {
-              "fid": 100,
+              "fid": "100",
               "layerId": "%1",
               "method": "create",
               "new": {
                 "attributes": {
                   "attachment": "FILE1.jpg",
                   "dbl": 3.14,
+                  "fid": 100,
                   "int": 42,
                   "str": "stringy"
                 },
@@ -1182,16 +1210,18 @@ class TestDeltaFileWrapper: public QObject
                   "FILE1.jpg": null
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "100"
             },
             {
-              "fid": 102,
+              "fid": "102",
               "layerId": "%1",
               "method": "create",
               "new": {
                 "attributes": {
                   "attachment": "FILE2.jpg",
                   "dbl": null,
+                  "fid": 102,
                   "int": null,
                   "str": null
                 },
@@ -1199,10 +1229,11 @@ class TestDeltaFileWrapper: public QObject
                   "FILE2.jpg": null
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "102"
             },
             {
-              "fid": 102,
+              "fid": "102",
               "layerId": "%1",
               "method": "patch",
               "new": {
@@ -1222,23 +1253,26 @@ class TestDeltaFileWrapper: public QObject
                   "FILE2.jpg": null
                 },
                 "geometry": null
-              }
+              },
+              "tmpFid": "102"
             },
             {
-              "fid": 1,
+              "fid": "1",
               "layerId": "%1",
               "method": "delete",
               "old": {
                 "attributes": {
                   "attachment": "%2",
                   "dbl": 3.14,
+                  "fid": 1,
                   "int": 42,
                   "str": "stringy"
                 },
                 "files_sha256": {
                   "%2": "%3"
                 }
-              }
+              },
+              "tmpFid": "1"
             }
           ],
           "files": [],

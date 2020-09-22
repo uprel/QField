@@ -29,7 +29,7 @@ class TestLayerObserver: public QObject
     {
       mLayer.reset( new QgsVectorLayer( QStringLiteral( "Point?crs=EPSG:3857&field=fid:integer&field=str:string" ), QStringLiteral( "Test Layer" ), QStringLiteral( "memory" ) ) );
       mLayer->setCustomProperty( QStringLiteral( "QFieldSync/action" ), QStringLiteral( "CLOUD" ) );
-      mLayer->setCustomProperty( QStringLiteral( "QFieldSync/cloudPrimaryKey" ), QStringLiteral( "fid" ) );
+      mLayer->setCustomProperty( QStringLiteral( "QFieldSync/sourceDataPrimaryKeys" ), QStringLiteral( "fid" ) );
 
       QVERIFY( mLayer->isValid() );
 

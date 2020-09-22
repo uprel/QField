@@ -908,7 +908,7 @@ QPair<int, QString> DeltaFileWrapper::getPkAttribute( const QgsVectorLayer *vl )
   const int pkAttrIdx = pkAttrs[0];
 
   if ( pkAttrIdx == -1 )
-    return QPair<int, QString>();
+    return QPair<int, QString>( -1, QString() );
 
   const QString pkAttrName = fields.at( pkAttrIdx ).name();
 

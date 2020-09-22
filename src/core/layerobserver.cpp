@@ -314,6 +314,13 @@ void LayerObserver::addLayerListeners()
     {
       if ( !vl->readOnly() && QFieldCloudUtils::isCloudAction( vl ) )
       {
+        // Ignore all layers that cannot determine a primary key column
+        if ( DeltaFileWrapper::getPkAttribute(vl).first == -1 )
+        {
+          QgsLogger::warning( QStringLiteral( "Failed to find a primary key column in layer \"%1\"" ).arg( layer->name() ) );
+          continue;
+        }
+
         // for `cloud` projects, we keep track of any change that has occurred
         connect( vl, &QgsVectorLayer::beforeCommitChanges, this, &LayerObserver::onBeforeCommitChanges );
         connect( vl, &QgsVectorLayer::committedFeaturesAdded, this, &LayerObserver::onCommittedFeaturesAdded );

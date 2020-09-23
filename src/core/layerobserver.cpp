@@ -22,6 +22,7 @@
 #include <qgsfeatureiterator.h>
 #include <qgsfeaturerequest.h>
 #include <qgsvectorlayereditbuffer.h>
+#include <qgsmessagelog.h>
 
 #include <QDir>
 
@@ -322,13 +323,13 @@ void LayerObserver::addLayerListeners()
         // Ignore all layers that cannot determine a primary key column
         if ( DeltaFileWrapper::getLocalPkAttribute( vl ).first == -1 )
         {
-          QgsLogger::warning( QStringLiteral( "Failed to find a local primary key column in layer \"%1\"" ).arg( layer->name() ) );
+          QgsMessageLog::logMessage( tr( "Failed to find a local primary key column in layer \"%1\"" ).arg( layer->name() ) );
           continue;
         }
 
         if ( DeltaFileWrapper::getSourcePkAttribute( vl ).first == -1 )
         {
-          QgsLogger::warning( QStringLiteral( "Failed to find a source primary key column in layer \"%1\"" ).arg( layer->name() ) );
+          QgsMessageLog::logMessage( tr( "Failed to find a source primary key column in layer \"%1\"" ).arg( layer->name() ) );
           continue;
         }
 

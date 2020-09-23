@@ -926,13 +926,15 @@ QPair<int, QString> DeltaFileWrapper::getLocalPkAttribute( const QgsVectorLayer 
 
 QPair<int, QString> DeltaFileWrapper::getSourcePkAttribute( const QgsVectorLayer *vl )
 {
-  QStringList pkAttrNames = vl->customProperty( QStringLiteral( "QFieldSync/sourceDataPrimaryKeys" ) ).toString().split( QStringLiteral( "," ) );
+  QString pkAttrNamesAggr = vl->customProperty( QStringLiteral( "QFieldSync/sourceDataPrimaryKeys" ) ).toString();
+
+  if ( pkAttrNamesAggr.isEmpty() )
+    return getLocalPkAttribute( vl );
+
+  QStringList pkAttrNames = pkAttrNamesAggr.split( QStringLiteral( "," ) );
 
   if ( pkAttrNames.size() > 1 )
     return QPair<int, QString>( -1, QString() );
-
-  if ( pkAttrNames.isEmpty() )
-    pkAttrNames << QStringLiteral( "fid" );
 
   const QString pkAttrName = pkAttrNames[0];
   const QgsFields fields = vl->fields();

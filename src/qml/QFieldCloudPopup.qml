@@ -173,21 +173,12 @@ Popup {
           columnSpacing: parent.columnSpacing
           rowSpacing: parent.rowSpacing
 
-          Text {
-            id: chooseText
-            font: Theme.tipFont
-            text: qsTr('Choose an action:')
-            wrapMode: Text.WordWrap
-            horizontalAlignment: Text.AlignHCenter
-            Layout.bottomMargin: 10
-            Layout.fillWidth: true
-          }
-
           QfButton {
             id: syncButton
             Layout.fillWidth: true
             font: Theme.defaultFont
-            text: qsTr('Sync!')
+            text: qsTr('Synchronize')
+            enabled: cloudProjectsModel.canCommitCurrentProject || cloudProjectsModel.canSyncCurrentProject
 
             onClicked: uploadProject(true)
           }
@@ -208,6 +199,7 @@ Popup {
             Layout.fillWidth: true
             font: Theme.defaultFont
             text: qsTr('Push changes')
+            enabled: cloudProjectsModel.canCommitCurrentProject
 
             onClicked: uploadProject(false)
           }
@@ -227,16 +219,20 @@ Popup {
             id: discardButton
             Layout.fillWidth: true
             font: Theme.defaultFont
+            bgcolor: Theme.darkRed
             text: qsTr('Discard local changes')
+            enabled: cloudProjectsModel.canCommitCurrentProject
 
-            onClicked: discardLocalChangesFromCurrentProject()
+            onClicked: {
+              discardDialog.open();
+            }
           }
 
           Text {
             id: discardText
             font: Theme.tipFont
             color: Theme.gray
-            text: qsTr('Revert all modified features in the local cloud layers. You cannot restore those changes!')
+            text: qsTr('Revert all modified features in the local cloud layers. You cannot restore those changes.')
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
             Layout.bottomMargin: 10
@@ -258,18 +254,35 @@ Popup {
     }
   }
 
-  Connections {
-    target: cloudProjectsModel
 
-    function onDataChanged(topLeftIdx, bottomRightIdx, roles) {
-//      console.log('onProjectStatusChanged', index, index2, projectId, status)
-//      if (projectId !== cloudProjectsModel.currentProjectId)
-//        return
+  Dialog {
+    id: discardDialog
+    parent: mainWindow.contentItem
 
-//      var showButtons = status in [QFieldCloudProjectsModel.Idle, QFieldCloudProjectsModel.Error]
+    property int selectedCount: 0
+    property bool isDeleted: false
 
-//      cloudInnerGrid.visible = showButtons
-//      busyText.visible = !showButtons
+    visible: false
+    modal: true
+
+    x: ( mainWindow.width - width ) / 2
+    y: ( mainWindow.height - height ) / 2
+
+    title: qsTr( "Discard local changes" )
+    Label {
+      width: parent.width
+      wrapMode: Text.WordWrap
+      text: qsTr( "Should local changes be discarded?" )
+    }
+
+    standardButtons: Dialog.Ok | Dialog.Cancel
+
+    onAccepted: {
+      discardLocalChangesFromCurrentProject();
+    }
+    onRejected: {
+      visible = false
+      popup.focus = true;
     }
   }
 
@@ -288,8 +301,6 @@ Popup {
       cloudProjectsModel.uploadProject(cloudProjectsModel.currentProjectId, shouldDownloadUpdates)
       return
     }
-
-    displayToast(qsTr('Nothing to sync'))
   }
 
   function discardLocalChangesFromCurrentProject() {

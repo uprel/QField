@@ -19,6 +19,7 @@ Page {
   signal aboutToSave
 
   property AttributeFormModel model
+  property alias currentTab: swipeView.currentIndex
   property alias toolbarVisible: toolbar.visible
   //! if embedded form called by RelationEditor or RelationReferenceWidget
   property bool embedded: false
@@ -198,13 +199,13 @@ Page {
               }
             }
 
-            model: SubModel {
+            SubModel {
               id: contentModel
               model: form.model
-              rootIndex: form.model.hasTabs
-                         ? form.model.index(currentIndex, 0)
-                         : form.model.index(0, 0)
+              rootIndex: form.model.index(currentIndex, 0)
             }
+
+            model: form.model.hasTabs ? contentModel : form.model
 
             delegate: fieldItem
           }
@@ -222,8 +223,8 @@ Page {
     Item {
       height: childrenRect.height
       anchors {
-        left: parent.left
-        right: parent.right
+        left: parent ? parent.left : undefined
+        right: parent ? parent.right : undefined
         leftMargin: 12
       }
 
@@ -290,6 +291,7 @@ Page {
 
         WebView {
           id: htmlItem
+          visible: TabIndex === form.currentTab && ( form.focus || featureForm.focus )
           anchors {
             left: parent.left
             rightMargin: 12
@@ -365,7 +367,7 @@ Page {
             // - not set to editable in the widget configuration
             // - not in edit mode (ReadOnly)
             // - a relation in multi edit mode
-            property bool isEnabled: AttributeAllowEdit
+            property bool isEnabled: !!AttributeAllowEdit
                                      && !!AttributeEditable
                                      && form.state !== 'ReadOnly'
                                      && !( Type === 'relation' && form.model.featureModel.modelMode == FeatureModel.MultiFeatureModel )

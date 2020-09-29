@@ -165,14 +165,12 @@ Rectangle {
       }
     }
 
-    add: Transition {
-        ColorAnimation { property: "color"; to: "#00FFFFFF"; duration: 250 }
-        PropertyAction { property: "color"; value: Theme.mainColor }
-    }
-
     delegate: Rectangle {
       id: itemBackground
-      anchors { left: parent.left; right: parent.right }
+      anchors {
+        left: parent ? parent.left : undefined
+        right: parent ? parent.right: undefined
+      }
       focus: true
       height: Math.max( 48, featureText.height )
 
@@ -195,9 +193,8 @@ Rectangle {
       Text {
         id: featureText
         anchors {
-          leftMargin: featureForm.selection.model.selectedCount > 0 ? 50 : 10;
-          left: parent.left;
-          right: parent.left;
+          leftMargin: featureForm.selection.model.selectedCount > 0 ? 50 : 10
+          left: parent.left
           verticalCenter: parent.verticalCenter
         }
         font.bold: true

@@ -1,6 +1,7 @@
 import QtQuick 2.12
 import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.12
+import QtQuick.Particles 2.0
 
 import org.qfield 1.0
 import Theme 1.0
@@ -42,17 +43,17 @@ Page {
 
     width: mainWindow.width
 
-    Image {
+    ImageDial{
+      id: imageDialLogo
+      value: 1
       Layout.margins: 6
       Layout.topMargin: 14
       Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
       Layout.preferredWidth: Math.min( 138, mainWindow.height / 4 )
       Layout.preferredHeight: Math.min( 138, mainWindow.height / 4 )
-      fillMode: Image.PreserveAspectFit
-      smooth: true
+
       source: "qrc:/images/qfield_logo.svg"
-      sourceSize.width: 200
-      sourceSize.height: 200
+      rotationOffset: 220
     }
 
     Text {
@@ -132,7 +133,7 @@ Page {
             id: rectangle
             property string path: ProjectPath
             property var type: ProjectType
-            width: parent.width
+            width: parent ? parent.width : undefined
             height: line.height
             color: "transparent"
 
@@ -273,6 +274,108 @@ Page {
       welcomeScreen.visible = false;
       welcomeScreen.focus = false;
     }
+  }
+
+  // Sparkles & unicorns
+  Rectangle {
+    anchors.fill: parent
+    color: "#00000000"
+    visible: imageDialLogo.value < 0.1
+
+    MouseArea {
+      id: mouseArea
+      anchors.fill: parent
+      acceptedButtons: Qt.LeftButton | Qt.RightButton
+      hoverEnabled: true
+      propagateComposedEvents: true
+      onReleased: mouse.accepted = false
+      onDoubleClicked: mouse.accepted = false
+      onPressAndHold: mouse.accepted = false
+      onClicked:  {
+        burstSomeSparkles(mouse.x, mouse.y)
+        mouse.accepted = false
+      }
+      onPressed:  {
+        burstSomeSparkles(mouse.x, mouse.y)
+        mouse.accepted = false
+      }
+      onPositionChanged: {
+        burstSomeSparkles(mouse.x, mouse.y)
+        mouse.accepted = false
+      }
+    }
+
+    ParticleSystem {
+      id: particles
+      running: imageDialLogo.value < 0.1
+    }
+
+    ParticleSystem {
+      id: unicorns
+      running: imageDialLogo.value < 0.1
+    }
+
+    ImageParticle {
+      anchors.fill: parent
+      system: particles
+      source: "qrc:///particleresources/star.png"
+      sizeTable: "qrc:///images/sparkleSize.png"
+      alpha: 1
+      colorVariation: 0.3
+    }
+
+    ImageParticle {
+      anchors.fill: parent
+      system: unicorns
+      source: "qrc:///images/icons/unicorn.png"
+      alpha: 1
+      redVariation: 0
+      blueVariation: 0
+      greenVariation: 0
+      rotation: 0
+      rotationVariation: 360
+    }
+
+    Emitter {
+      id: emitterParticles
+      x: -100
+      y: -100
+      system: particles
+      emitRate: 60
+      lifeSpan: 700
+      size: 50
+      sizeVariation: 10
+      maximumEmitted: 100
+      velocity: AngleDirection {
+          angle: 0
+          angleVariation: 360
+          magnitude: 100
+          magnitudeVariation: 50
+      }
+    }
+
+    Emitter {
+      id: emitterUnicorns
+      x: -100
+      y: -100
+      system: unicorns
+      emitRate: 20
+      lifeSpan: 900
+      size: 70
+      sizeVariation: 10
+      maximumEmitted: 100
+      velocity: AngleDirection {
+          angle: 90
+          angleVariation: 20
+          magnitude: 200
+          magnitudeVariation: 50
+      }
+    }
+  }
+
+  function burstSomeSparkles(x, y) {
+    emitterParticles.burst(50, x, y)
+    emitterUnicorns.burst(1, x, y)
   }
 
   function adjustWelcomeScreen() {

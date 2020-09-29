@@ -234,27 +234,27 @@ ApplicationWindow {
       anchors.fill: parent
 
       onClicked:  {
-          if (locatorItem.state == "on") {
-              locatorItem.state = "off"
+        if (locatorItem.state == "on") {
+          locatorItem.state = "off"
+        }
+        else if (geometryEditorsToolbar.canvasClicked(point)) {
+          // for instance, the vertex editor will select a vertex if possible
+        }
+        else if ( type === "stylus" && ( ( stateMachine.state === "digitize" && dashBoard.currentLayer ) || stateMachine.state === 'measure' ) ) {
+          if ( Number( currentRubberband.model.geometryType ) === QgsWkbTypes.PointGeometry ||
+              Number( currentRubberband.model.geometryType ) === QgsWkbTypes.NullGeometry )
+          {
+            digitizingToolbar.confirm()
           }
-          else if (geometryEditorsToolbar.canvasClicked(point)) {
-            // for instance, the vertex editor will select a vertex if possible
+          else
+          {
+            currentRubberband.model.addVertex()
+            coordinateLocator.flash()
           }
-          else if ( type === "stylus" && ( ( stateMachine.state === "digitize" && dashBoard.currentLayer ) || stateMachine.state === 'measure' ) ) {
-                if ( Number( currentRubberband.model.geometryType ) === QgsWkbTypes.PointGeometry ||
-                     Number( currentRubberband.model.geometryType ) === QgsWkbTypes.NullGeometry )
-                {
-                  digitizingToolbar.confirm()
-                }
-                else
-                {
-                    currentRubberband.model.addVertex()
-                    coordinateLocator.flash()
-                }
-          }
-          else if( !overlayFeatureFormDrawer.visible ) {
-              identifyTool.identify(point)
-          }
+        }
+        else if( !overlayFeatureFormDrawer.visible ) {
+          identifyTool.identify(point)
+        }
       }
 
       onLongPressed: {
@@ -616,6 +616,11 @@ ApplicationWindow {
     allowLayerChange: !digitizingToolbar.isDigitizing
     mapSettings: mapCanvas.mapSettings
     interactive: !welcomeScreen.visible
+
+    onOpenedChanged: {
+      if ( !opened && featureForm.visible )
+        featureForm.focus = true
+    }
   }
 
   /* The main menu */
@@ -660,7 +665,11 @@ ApplicationWindow {
     QfToolButton {
       id: topologyButton
       round: true
-      visible: stateMachine.state === "digitize" && dashBoard.currentLayer.isValid() && ( dashBoard.currentLayer.geometryType() === QgsWkbTypes.PolygonGeometry || dashBoard.currentLayer.geometryType() === QgsWkbTypes.LineGeometry )
+      visible: stateMachine.state === "digitize"
+          && dashBoard.currentLayer
+          // NOTE: isValid is not a function
+          && dashBoard.currentLayer.isValid
+          && ( dashBoard.currentLayer.geometryType() === QgsWkbTypes.PolygonGeometry || dashBoard.currentLayer.geometryType() === QgsWkbTypes.LineGeometry )
       state: qgisProject.topologicalEditing ? "On" : "Off"
       iconSource: Theme.getThemeIcon( "ic_topology_white_24dp" )
 

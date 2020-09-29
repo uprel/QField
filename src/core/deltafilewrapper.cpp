@@ -830,7 +830,7 @@ bool DeltaFileWrapper::applyDeltasOnLayers( QHash<QString, QgsVectorLayer *> &ve
 
     if ( method != QStringLiteral( "create" ) )
     {
-      QgsExpression expr( QStringLiteral( " %1 = %2 " ).arg( QgsExpression::quotedColumnRef( pkAttrPair.second ) ).arg( QgsExpression::quotedString( tmpDeltaFid ) ) );
+      QgsExpression expr( QStringLiteral( " %1 = %2 " ).arg( QgsExpression::quotedColumnRef( pkAttrPair.second ), QgsExpression::quotedString( tmpDeltaFid ) ) );
       QgsFeatureIterator it = vectorLayers[layerId]->getFeatures( QgsFeatureRequest( expr ) );
 
       if ( ! it.nextFeature( f ) )
@@ -945,4 +945,3 @@ QPair<int, QString> DeltaFileWrapper::getSourcePkAttribute( const QgsVectorLayer
 
   return QPair<int, QString>( pkAttrIdx, pkAttrName );
 }
-

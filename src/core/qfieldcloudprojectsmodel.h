@@ -103,7 +103,8 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       DeltaFileWaitingStatus,
       DeltaFileBusyStatus,
       DeltaFileAppliedStatus,
-      DeltaFileAppliedWithConflictsStatus
+      DeltaFileAppliedWithConflictsStatus,
+      DeltaFileNotAppliedStatus,
     };
 
     Q_ENUM( DeltaFileStatus )

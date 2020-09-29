@@ -809,6 +809,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
           projectGetDeltaStatus( projectId );
         } );
         break;
+      case DeltaFileNotAppliedStatus:
       case DeltaFileErrorStatus:
         deltaFile->resetId();
 
@@ -921,6 +922,8 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
       mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedStatus;
     else if ( status == QStringLiteral( "STATUS_APPLIED_WITH_CONFLICTS" ) )
       mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedWithConflictsStatus;
+    else if ( status == QStringLiteral( "STATUS_NOT_APPLIED" ) )
+      mCloudProjects[index].deltaFileUploadStatus = DeltaFileNotAppliedStatus;
     else if ( status == QStringLiteral( "STATUS_PENDING" ) )
       mCloudProjects[index].deltaFileUploadStatus = DeltaFilePendingStatus;
     else if ( status == QStringLiteral( "STATUS_WAITING" ) )

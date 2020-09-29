@@ -92,7 +92,7 @@ class DeltaFileWrapper : public QObject
 
 
     /**
-     * @brief Get a pair of the index and the name of the primary key column of given \a vl layer, as they were before offline editing.
+     * @brief Get a pair of the index and the name of the primary key column of given \a vl layer, as they are in the original source.
      */
     static QPair<int, QString> getSourcePkAttribute( const QgsVectorLayer *vl );
 

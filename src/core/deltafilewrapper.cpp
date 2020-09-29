@@ -305,7 +305,7 @@ QString DeltaFileWrapper::toFileForUpload( const QString &outFileName ) const
     for ( QJsonValue deltaValue : constDeltas )
     {
         QJsonObject delta = deltaValue.toObject();
-        QgsVectorLayer *layer = static_cast<QgsVectorLayer *>( mProject->mapLayer( delta["layerId"].toString() ) );
+        QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( mProject->mapLayer( delta["layerId"].toString() ) );
 
         if ( layer )
         {
@@ -945,5 +945,4 @@ QPair<int, QString> DeltaFileWrapper::getSourcePkAttribute( const QgsVectorLayer
 
   return QPair<int, QString>( pkAttrIdx, pkAttrName );
 }
-
 

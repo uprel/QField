@@ -88,7 +88,7 @@ Page {
         QfButton {
           id: cloudProjectButton
           Layout.fillWidth: true
-          text: qsTr( "Open QField Cloud project" )
+          text: qsTr( "QFieldCloud Projects" )
           onClicked: {
             showQFieldCloudScreen()
           }
@@ -96,7 +96,7 @@ Page {
         QfButton {
           id: localProjectButton
           Layout.fillWidth: true
-          text: qsTr( "Open local project" )
+          text: qsTr( "Open Local Project" )
           onClicked: {
             showOpenProjectDialog()
           }

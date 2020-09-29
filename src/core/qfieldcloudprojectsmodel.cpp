@@ -1224,6 +1224,9 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
 
   DeltaFileWrapper *dfw = mLayerObserver->committedDeltaFileWrapper();
 
+  updateCanSyncCurrentProject();
+  updateCanCommitCurrentProject();
+
   if ( ! dfw->applyReversed() )
     return false;
 

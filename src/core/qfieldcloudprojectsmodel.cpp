@@ -52,6 +52,7 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
 
     updateCanCommitCurrentProject();
     updateCanSyncCurrentProject();
+    updateCurrentProjectChangesCount();
   } );
 
   connect( this, &QFieldCloudProjectsModel::modelReset, this, [ = ]()
@@ -65,6 +66,7 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
 
     updateCanCommitCurrentProject();
     updateCanSyncCurrentProject();
+    updateCurrentProjectChangesCount();
   } );
 
   connect( this, &QFieldCloudProjectsModel::dataChanged, this, [ = ]( const QModelIndex & topLeft, const QModelIndex & bottomRight, const QVector<int> &roles )
@@ -78,6 +80,7 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
 
     updateCanCommitCurrentProject();
     updateCanSyncCurrentProject();
+    updateCurrentProjectChangesCount();
 
     // current project
     if ( topLeft.row() == index )
@@ -128,6 +131,7 @@ void QFieldCloudProjectsModel::setLayerObserver( LayerObserver *layerObserver )
     refreshProjectModification( mCurrentProjectId );
     updateCanCommitCurrentProject();
     updateCanSyncCurrentProject();
+    updateCurrentProjectChangesCount();
   } );
 
   emit layerObserverChanged();
@@ -274,9 +278,9 @@ void QFieldCloudProjectsModel::updateCanSyncCurrentProject()
 
   if ( mCurrentProjectId.isEmpty() )
     mCanSyncCurrentProject = false;
-  else if ( projectStatus( mCurrentProjectId ) == ProjectStatus::Idle
-            && mLayerObserver->committedDeltaFileWrapper()->count() > 0 )
+  else if ( projectStatus( mCurrentProjectId ) == ProjectStatus::Idle )
     mCanSyncCurrentProject = true;
+  // In the future we might have a smarter mechanism whether there is RemoteModificationr
   else if ( projectStatus( mCurrentProjectId ) == ProjectStatus::Idle
             && projectModification( mCurrentProjectId ) & RemoteModification )
     mCanSyncCurrentProject = true;
@@ -285,6 +289,28 @@ void QFieldCloudProjectsModel::updateCanSyncCurrentProject()
 
   if ( oldCanSyncCurrentProject != mCanSyncCurrentProject )
     emit canSyncCurrentProjectChanged();
+}
+
+void QFieldCloudProjectsModel::updateCurrentProjectChangesCount()
+{
+  const DeltaFileWrapper *currentDeltaFileWrapper = mLayerObserver->currentDeltaFileWrapper();
+  const DeltaFileWrapper *committedDeltaFileWrapper = mLayerObserver->committedDeltaFileWrapper();
+
+  Q_ASSERT( committedDeltaFileWrapper );
+  Q_ASSERT( currentDeltaFileWrapper );
+
+  int count = currentDeltaFileWrapper->count() + committedDeltaFileWrapper->count();
+
+  if ( count != mCurrentProjectChangesCount )
+  {
+    mCurrentProjectChangesCount = count;
+    emit currentProjectChangesCountChanged();
+  }
+}
+
+int QFieldCloudProjectsModel::currentProjectChangesCount() const
+{
+  return mCurrentProjectChangesCount;
 }
 
 QFieldCloudProjectsModel::ProjectModifications QFieldCloudProjectsModel::projectModification( const QString &projectId ) const
@@ -309,7 +335,7 @@ void QFieldCloudProjectsModel::refreshProjectModification( const QString &projec
   if ( mLayerObserver->currentDeltaFileWrapper()->count() > 0
        || mLayerObserver->committedDeltaFileWrapper()->count() > 0 )
     mCloudProjects[index].modification |= LocalModification;
-  else
+  else if ( mCloudProjects[index].modification & LocalModification )
     mCloudProjects[index].modification ^= LocalModification;
 
   if ( oldModifications != mCloudProjects[index].modification )
@@ -666,6 +692,13 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   if ( !( mCloudProjects[index].status == ProjectStatus::Idle ) )
     return;
 
+
+  if ( mCurrentProjectChangesCount == 0 )
+  {
+    downloadProject( projectId );
+    return;
+  }
+
   if ( !( mCloudProjects[index].modification & LocalModification ) )
     return;
 
@@ -695,6 +728,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   refreshProjectModification( projectId );
   updateCanCommitCurrentProject();
   updateCanSyncCurrentProject();
+  updateCurrentProjectChangesCount();
 
   emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadProgressRole );
 
@@ -1053,7 +1087,7 @@ void QFieldCloudProjectsModel::layerObserverLayerEdited( const QString &layerId 
 
   if ( committedDeltaFileWrapper->count() > 0 )
     mCloudProjects[index].modification |= LocalModification;
-  else
+  else if ( mCloudProjects[index].modification & LocalModification )
     mCloudProjects[index].modification ^= LocalModification;
 
   endResetModel();
@@ -1223,12 +1257,11 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
   if ( ! mLayerObserver->commit() )
     return false;
 
-  qDebug() << mLayerObserver->committedDeltaFileWrapper()->count() << mLayerObserver->currentDeltaFileWrapper()->count();
-
   DeltaFileWrapper *dfw = mLayerObserver->committedDeltaFileWrapper();
 
-  updateCanSyncCurrentProject();
   updateCanCommitCurrentProject();
+  updateCanSyncCurrentProject();
+  updateCurrentProjectChangesCount();
 
   if ( ! dfw->applyReversed() )
     return false;

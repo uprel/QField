@@ -135,6 +135,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     Q_PROPERTY( QString currentProjectId READ currentProjectId WRITE setCurrentProjectId NOTIFY currentProjectIdChanged )
     Q_PROPERTY( ProjectStatus currentProjectStatus READ currentProjectStatus NOTIFY currentProjectStatusChanged )
+    Q_PROPERTY( int currentProjectChangesCount READ currentProjectChangesCount NOTIFY currentProjectChangesCountChanged )
     Q_PROPERTY( bool canCommitCurrentProject READ canCommitCurrentProject NOTIFY canCommitCurrentProjectChanged )
     Q_PROPERTY( bool canSyncCurrentProject READ canSyncCurrentProject NOTIFY canSyncCurrentProjectChanged )
 
@@ -142,6 +143,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void setCurrentProjectId( const QString &currentProjectId );
 
     ProjectStatus currentProjectStatus() const;
+    int currentProjectChangesCount() const;
 
     Q_INVOKABLE void refreshProjectsList();
     Q_INVOKABLE void downloadProject( const QString &projectId );
@@ -168,6 +170,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void layerObserverChanged();
     void currentProjectIdChanged();
     void currentProjectStatusChanged();
+    void currentProjectChangesCountChanged();
     void canCommitCurrentProjectChanged();
     void canSyncCurrentProjectChanged();
     void warning( const QString &message );
@@ -278,6 +281,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     QList<CloudProject> mCloudProjects;
     QFieldCloudConnection *mCloudConnection = nullptr;
     QString mCurrentProjectId;
+    int mCurrentProjectChangesCount = 0;
     LayerObserver *mLayerObserver = nullptr;
 
     bool mCanCommitCurrentProject = false;
@@ -296,6 +300,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     bool canSyncCurrentProject();
     void updateCanCommitCurrentProject();
     void updateCanSyncCurrentProject();
+    void updateCurrentProjectChangesCount();
 };
 
 Q_DECLARE_METATYPE( QFieldCloudProjectsModel::ProjectStatus )

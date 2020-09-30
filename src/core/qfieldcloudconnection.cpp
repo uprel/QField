@@ -89,60 +89,51 @@ void QFieldCloudConnection::setPassword( const QString &password )
 
 void QFieldCloudConnection::login()
 {
-  QgsNetworkAccessManager *nam = QgsNetworkAccessManager::instance();
-  QNetworkRequest request;
-  request.setHeader( QNetworkRequest::ContentTypeHeader, "application/json" );
-
-  QNetworkReply *reply;
-  if ( mPassword.isEmpty() )
-  {
-    request.setUrl( mUrl + "/api/v1/auth/user/" );
-    setAuthenticationToken( request );
-    reply = nam->get( request );
-  }
-  else
-  {
-    QJsonObject json;
-    request.setUrl( mUrl + "/api/v1/auth/token/" );
-    json.insert( "username", mUsername );
-    json.insert( "password", mPassword );
-    QJsonDocument doc;
-    doc.setObject( json );
-    QByteArray requestBody = doc.toJson();
-    reply = nam->post( request, requestBody );
-  }
+  NetworkReply *reply = ( ! mToken.isEmpty() && ( mPassword.isEmpty() || mUsername.isEmpty() ) )
+        ? get( QStringLiteral( "/api/v1/auth/user/" ) )
+        : post( QStringLiteral( "/api/v1/auth/token/" ), QVariantMap({
+                         {"username", mUsername},
+                         {"password", mPassword},
+                       }) );
 
   setStatus( ConnectionStatus::Connecting );
 
-  // TODO remove this!!! temporary SSL workaround
-  connect( reply, &QNetworkReply::sslErrors, this, [ = ]( const QList<QSslError> &errors )
+  connect( reply, &NetworkReply::finished, this, [ = ]()
   {
-    for ( const QSslError &error : errors )
-      qDebug() << "SSL: " << error;
+    QNetworkReply *rawReply = reply->reply();
 
-    reply->ignoreSslErrors( errors );
-  } );
+    Q_ASSERT( reply->isFinished() );
+    Q_ASSERT( rawReply );
 
-  connect( reply, &QNetworkReply::finished, this, [this, reply]()
-  {
-    if ( reply->error() == QNetworkReply::NoError )
-    {
-      QByteArray response = reply->readAll();
-      QByteArray token = QJsonDocument::fromJson( response ).object().toVariantMap().value( QStringLiteral( "token" ) ).toByteArray();
-      if ( !token.isEmpty() )
-      {
-        setToken( token );
-      }
-
-      mUsername  = QJsonDocument::fromJson( response ).object().toVariantMap().value( QStringLiteral( "username" ) ).toString();
-      setStatus( ConnectionStatus::LoggedIn );
-    }
-    else
-    {
-      emit loginFailed( QStringLiteral( "%1 (HTTP Status %2)" ).arg( reply->errorString(), QString::number( reply->error() ) ) );
-      setStatus( ConnectionStatus::Disconnected );
-    }
     reply->deleteLater();
+    rawReply->deleteLater();
+
+    if ( rawReply->error() != QNetworkReply::NoError )
+    {
+      emit loginFailed( QStringLiteral( "%1 (HTTP Status %2)" ).arg( rawReply->errorString(), QString::number( rawReply->error() ) ) );
+      setStatus( ConnectionStatus::Disconnected );
+      return;
+    }
+
+    QJsonObject resp = QJsonDocument::fromJson( rawReply->readAll() ).object();
+
+    if ( resp.isEmpty() )
+    {
+      emit loginFailed( QStringLiteral( "Failed to parse server response" ) );
+      setStatus( ConnectionStatus::Disconnected );
+      return;
+    }
+
+    QByteArray token = resp.value( QStringLiteral( "token" ) ).toString().toUtf8();
+
+    if ( !token.isEmpty() )
+    {
+      setToken( token );
+    }
+
+    mUsername  = resp.value( QStringLiteral( "username" ) ).toString();
+    setStatus( ConnectionStatus::LoggedIn );
+
   } );
 }
 
@@ -179,9 +170,6 @@ QFieldCloudConnection::ConnectionState QFieldCloudConnection::state() const
 
 NetworkReply *QFieldCloudConnection::post( const QString &endpoint, const QVariantMap &params, const QStringList &fileNames )
 {
-  if ( mToken.isNull() )
-    return nullptr;
-
   QNetworkRequest request( mUrl + endpoint );
   QByteArray requestBody = QJsonDocument( QJsonObject::fromVariantMap( params ) ).toJson();
   setAuthenticationToken( request );

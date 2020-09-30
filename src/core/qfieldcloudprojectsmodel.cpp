@@ -485,7 +485,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
         int fileSize = fileObject.value( QStringLiteral( "size" ) ).toInt();
 
         mCloudProjects[index].downloadFileTransfers.insert( fileName, FileTransfer( fileName, fileSize ) );
-        mCloudProjects[index].downloadBytesTotal += fileSize;
+        mCloudProjects[index].downloadBytesTotal += std::min( fileSize, 0 );
       }
     }
     else if ( status == QStringLiteral( "ERROR" ) )
@@ -565,7 +565,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       mCloudProjects[index].downloadBytesReceived -= mCloudProjects[index].downloadFileTransfers[fileName].bytesTransferred;
       mCloudProjects[index].downloadBytesReceived += bytesReceived;
       mCloudProjects[index].downloadFileTransfers[fileName].bytesTransferred = bytesReceived;
-      mCloudProjects[index].downloadProgress = static_cast<double>( mCloudProjects[index].downloadBytesReceived ) / mCloudProjects[index].downloadBytesTotal;
+      mCloudProjects[index].downloadProgress = std::clamp( ( static_cast<double>( mCloudProjects[index].downloadBytesReceived ) / std::max( mCloudProjects[index].downloadBytesTotal, 1 ) ), 0., 1. );
 
       QModelIndex idx = createIndex( index, 0 );
 

@@ -131,6 +131,7 @@ Popup {
           text: switch(cloudProjectsModel.currentProjectStatus ) {
                   case QFieldCloudProjectsModel.Downloading: qsTr('Downloading…'); break;
                   case QFieldCloudProjectsModel.Uploading: qsTr('Uploading…'); break;
+                  default: '';
                 }
           wrapMode: Text.WordWrap
           horizontalAlignment: Text.AlignHCenter
@@ -172,6 +173,21 @@ Popup {
           columns: 1
           columnSpacing: parent.columnSpacing
           rowSpacing: parent.rowSpacing
+
+          Text {
+            id: changesText
+            font: Theme.tipFont
+            color: Theme.gray
+            text: cloudProjectsModel.currentProjectChangesCount === 0
+                  ? qsTr('There are no local changes.')
+                  : cloudProjectsModel.currentProjectChangesCount === 1
+                    ? qsTr('There is a single local change.')
+                    : qsTr('There are %1 local changes.').arg( cloudProjectsModel.currentProjectChangesCount )
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+            Layout.bottomMargin: 20
+            Layout.fillWidth: true
+          }
 
           QfButton {
             id: syncButton

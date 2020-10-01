@@ -709,7 +709,7 @@ bool QFieldCloudProjectsModel::projectMoveDownloadedFilesToPermanentStorage( con
       QgsLogger::warning( QStringLiteral( "Failed to remove temporary file \"%1\"" ).arg( fileName ) );
   }
 
-  return hasError;
+  return ! hasError;
 }
 
 

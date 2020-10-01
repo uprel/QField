@@ -78,7 +78,7 @@ Item {
       }
 
       Keys.onReturnPressed: loginFormSumbitHandler()
-      Keys.onReleased: {
+      onEditingFinished: {
         cloudConnection.url = text ? text : cloudConnection.defaultUrl
       }
     }

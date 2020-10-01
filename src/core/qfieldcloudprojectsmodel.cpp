@@ -511,7 +511,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
         int fileSize = fileObject.value( QStringLiteral( "size" ) ).toInt();
 
         mCloudProjects[index].downloadFileTransfers.insert( fileName, FileTransfer( fileName, fileSize ) );
-        mCloudProjects[index].downloadBytesTotal += std::min( fileSize, 0 );
+        mCloudProjects[index].downloadBytesTotal += std::max( fileSize, 0 );
       }
     }
     else if ( status == QStringLiteral( "ERROR" ) )

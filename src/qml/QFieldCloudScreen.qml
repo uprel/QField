@@ -128,7 +128,7 @@ Page {
                   property string projectOwner: Owner
                   property string projectName: Name
                   property string projectLocalPath: LocalPath
-                  width: parent.width
+                  width: parent ? parent.width : undefined
                   height: line.height
                   color: "transparent"
 
@@ -398,7 +398,7 @@ Page {
   Connections {
     target: cloudConnection
 
-    onStatusChanged: {
+    function onStatusChanged() {
       if ( cloudConnection.status === QFieldCloudConnection.LoggedIn )
         prepareCloudLogin();
     }

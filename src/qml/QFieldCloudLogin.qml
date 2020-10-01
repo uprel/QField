@@ -165,7 +165,7 @@ Item {
   Connections {
     target: cloudConnection
 
-    onStatusChanged: {
+    function onStatusChanged() {
       if ( cloudConnection.status === QFieldCloudConnection.LoggedIn )
         usernameField.text = cloudConnection.username
     }

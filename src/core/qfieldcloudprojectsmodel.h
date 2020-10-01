@@ -217,6 +217,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       FileTransfer() = default;
 
       QString fileName;
+      QString tmpFile;
       int bytesTotal;
       int bytesTransferred = 0;
       bool isFinished = false;
@@ -287,6 +288,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void projectGetDeltaStatus( const QString &projectId );
     void projectGetDownloadStatus( const QString &projectId );
     void projectDownloadLayers( const QString &projectId );
+    bool projectMoveDownloadedFilesToPermanentStorage( const QString &projectId );
 
     NetworkReply *downloadFile( const QString &exportJobId, const QString &fileName );
     void projectDownloadFiles( const QString &projectId );

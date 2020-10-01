@@ -566,7 +566,9 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
   for ( const QString &fileName : fileNames )
   {
     NetworkReply *reply = downloadFile( mCloudProjects[index].downloadJobId, fileName );
-    QTemporaryFile *file = new QTemporaryFile( reply );
+    QTemporaryFile *file = new QTemporaryFile();
+
+    file->setAutoRemove( false );
 
     if ( ! file->open() )
     {
@@ -581,6 +583,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       return;
     }
 
+    mCloudProjects[index].downloadFileTransfers[fileName].tmpFile = file->fileName();
     mCloudProjects[index].downloadFileTransfers[fileName].networkReply = reply;
 
     connect( reply, &NetworkReply::downloadProgress, this, [ = ]( int bytesReceived, int bytesTotal )
@@ -623,34 +626,6 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
         QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
       }
 
-      QFileInfo fileInfo( fileName );
-      QDir dir( QStringLiteral( "%1/%2/%3" ).arg( QFieldCloudUtils::localCloudDirectory(), projectId, fileInfo.path() ) );
-
-      if ( ! hasError && ! dir.exists() && ! dir.mkpath( QStringLiteral( "." ) ) )
-      {
-        hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to create directory at \"%1\"" ).arg( dir.path() ) );
-      }
-
-      const QString destinationFileName( dir.filePath( fileInfo.fileName() ) );
-
-      // if the file already exists, we need to delete it first, as QT does not support overwriting
-      // NOTE: it is possible that someone creates the file in the meantime between this and the next if statement
-      if ( ! hasError && QFile::exists( destinationFileName ) && ! file->remove( destinationFileName ) )
-      {
-        hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to remove file before overwriting stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
-      }
-
-      if ( ! hasError && ! file->copy( destinationFileName ) )
-      {
-        hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
-
-        if ( ! QFile::remove( dir.filePath( fileName ) ) )
-          QgsLogger::warning( QStringLiteral( "Failed to remove partly overwritten file stored at \"%1\"" ).arg( fileName ) );
-      }
-
       if ( hasError )
       {
         mCloudProjects[index].downloadFilesFailed++;
@@ -662,6 +637,13 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
 
       if ( mCloudProjects[index].downloadFilesFinished == fileNames.count() )
       {
+        if ( ! hasError )
+        {
+          // move the files from their temporary location to their permanent one
+          if ( ! projectMoveDownloadedFilesToPermanentStorage( projectId ) )
+            mCloudProjects[index].errorStatus = DownloadErrorStatus;
+        }
+
         emit projectDownloaded( projectId, false, mCloudProjects[index].name );
 
         mCloudProjects[index].status = ProjectStatus::Idle;
@@ -676,6 +658,58 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       emit dataChanged( idx, idx, rolesChanged );
     } );
   }
+}
+
+
+bool QFieldCloudProjectsModel::projectMoveDownloadedFilesToPermanentStorage( const QString &projectId )
+{
+  if ( !mCloudConnection )
+    return false;
+
+  const int index = findProject( projectId );
+
+  if ( index == -1 || index >= mCloudProjects.size() )
+    return false;
+
+  bool hasError = false;
+  const QStringList fileNames = mCloudProjects[index].downloadFileTransfers.keys();
+
+  for ( const QString &fileName : fileNames )
+  {
+    QFileInfo fileInfo( fileName );
+    QFile file( mCloudProjects[index].downloadFileTransfers[fileName].tmpFile );
+    QDir dir( QStringLiteral( "%1/%2/%3" ).arg( QFieldCloudUtils::localCloudDirectory(), projectId, fileInfo.path() ) );
+
+    if ( ! hasError && ! dir.exists() && ! dir.mkpath( QStringLiteral( "." ) ) )
+    {
+      hasError = true;
+      QgsLogger::warning( QStringLiteral( "Failed to create directory at \"%1\"" ).arg( dir.path() ) );
+    }
+
+    const QString destinationFileName( dir.filePath( fileInfo.fileName() ) );
+
+    // if the file already exists, we need to delete it first, as QT does not support overwriting
+    // NOTE: it is possible that someone creates the file in the meantime between this and the next if statement
+    if ( ! hasError && QFile::exists( destinationFileName ) && ! file.remove( destinationFileName ) )
+    {
+      hasError = true;
+      QgsLogger::warning( QStringLiteral( "Failed to remove file before overwriting stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
+    }
+
+    if ( ! hasError && ! file.copy( destinationFileName ) )
+    {
+      hasError = true;
+      QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
+
+      if ( ! QFile::remove( dir.filePath( fileName ) ) )
+        QgsLogger::warning( QStringLiteral( "Failed to remove partly overwritten file stored at \"%1\"" ).arg( fileName ) );
+    }
+
+    if ( ! file.remove() )
+      QgsLogger::warning( QStringLiteral( "Failed to remove temporary file \"%1\"" ).arg( fileName ) );
+  }
+
+  return hasError;
 }
 
 

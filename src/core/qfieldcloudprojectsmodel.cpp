@@ -877,7 +877,6 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
           projectGetDeltaStatus( projectId );
         } );
         break;
-      case DeltaFileNotAppliedStatus:
       case DeltaFileErrorStatus:
         deltaFile->resetId();
 
@@ -888,6 +887,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         return;
       case DeltaFileAppliedStatus:
       case DeltaFileAppliedWithConflictsStatus:
+      case DeltaFileNotAppliedStatus:
         deltaFile->reset();
         deltaFile->resetId();
 

@@ -269,11 +269,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       int uploadAttachmentsFinished = 0;
       int uploadAttachmentsFailed = 0;
       int uploadAttachmentsBytesTotal = 0;
-
-      QMap<QString, FileTransfer> downloadLayers;
-      int downloadLayersFinished = 0;
-      int downloadLayersFailed = 0;
-      int downloadLayersBytesTotal = 0;
     };
 
     inline QString layerFileName( const QgsMapLayer *layer ) const;

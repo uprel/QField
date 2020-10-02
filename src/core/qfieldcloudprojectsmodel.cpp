@@ -24,6 +24,7 @@
 #include <qgsapplication.h>
 #include <qgsproject.h>
 #include <qgsproviderregistry.h>
+#include <qgsmessagelog.h>
 
 #include <QNetworkReply>
 #include <QTemporaryFile>
@@ -726,8 +727,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   if ( !( mCloudProjects[index].status == ProjectStatus::Idle ) )
     return;
 
-
-  if ( mCurrentProjectChangesCount == 0 )
+  if ( shouldDownloadUpdates && mCurrentProjectChangesCount == 0 )
   {
     downloadProject( projectId );
     return;
@@ -766,7 +766,6 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
   emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadProgressRole );
 
-
   // //////////
   // prepare attachment files to be uploaded
   // //////////
@@ -787,7 +786,10 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   QString deltaFileToUpload = deltaFile->toFileForUpload();
 
   if ( deltaFileToUpload.isEmpty() )
-      return;
+  {
+    mCloudProjects[index].status = ProjectStatus::Idle;
+    return;
+  }
 
   // //////////
   // 1) send delta file
@@ -812,15 +814,9 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     {
       // TODO check why exactly we failed
       // maybe the project does not exist, then create it?
-      QgsLogger::warning( QStringLiteral( "Failed to upload delta file, reason:\n%1" ).arg( deltasReply->errorString() ) );
-
-      deltaFile->resetId();
-
-      if ( ! deltaFile->toFile() )
-        QgsLogger::warning( QStringLiteral( "Failed update committed delta file." ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to upload delta file, reason:\n%1" ).arg( deltasReply->errorString() ) );
 
       mCloudProjects[index].deltaFileUploadStatusString = deltasReply->errorString();
-
       projectCancelUpload( projectId );
       return;
     }
@@ -843,14 +839,19 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     // ? what if an attachment fail to be uploaded?
     projectUploadAttachments( projectId );
 
-    if ( mCloudProjects[index].uploadAttachmentsFailed != 0 )
+    if ( shouldDownloadUpdates )
     {
-      mCloudProjects[index].deltaFileUploadStatusString = QStringLiteral( "Some layers failed to download" );
-      projectCancelUpload( projectId );
-      return;
+      projectGetDeltaStatus( projectId );
     }
+    else
+    {
+      mCloudProjects[index].status = ProjectStatus::Idle;
 
-    projectGetDeltaStatus( projectId );
+      QModelIndex idx = createIndex( index, 0 );
+
+      emit dataChanged( idx, idx, QVector<int>() << StatusRole );
+      emit syncFinished( projectId, false );
+    }
   } );
 
 
@@ -1051,7 +1052,7 @@ void QFieldCloudProjectsModel::projectUploadAttachments( const QString &projectI
       if ( attachmentReply->error() != QNetworkReply::NoError )
       {
         mCloudProjects[index].uploadAttachmentsFailed++;
-        QgsLogger::warning( QStringLiteral( "Failed to upload attachment stored at \"%1\", reason:\n%2" )
+        QgsMessageLog::logMessage( tr( "Failed to upload attachment stored at \"%1\", reason:\n%2" )
                             .arg( fileName )
                             .arg( attachmentReply->errorString() ) );
       }

@@ -567,7 +567,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
   for ( const QString &fileName : fileNames )
   {
     NetworkReply *reply = downloadFile( mCloudProjects[index].downloadJobId, fileName );
-    QTemporaryFile *file = new QTemporaryFile();
+    QTemporaryFile *file = new QTemporaryFile( reply );
 
     file->setAutoRemove( false );
 
@@ -606,7 +606,6 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
     {
       QVector<int> rolesChanged;
       QNetworkReply *rawReply = reply->reply();
-      reply->deleteLater();
 
       Q_ASSERT( reply->isFinished() );
       Q_ASSERT( reply );
@@ -643,6 +642,11 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
           // move the files from their temporary location to their permanent one
           if ( ! projectMoveDownloadedFilesToPermanentStorage( projectId ) )
             mCloudProjects[index].errorStatus = DownloadErrorStatus;
+        }
+
+        for ( const QString &fileName : fileNames )
+        {
+          mCloudProjects[index].downloadFileTransfers[fileName].networkReply->deleteLater();
         }
 
         emit projectDownloaded( projectId, false, mCloudProjects[index].name );

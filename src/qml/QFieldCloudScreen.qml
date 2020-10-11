@@ -133,10 +133,11 @@ Page {
                   color: "transparent"
 
                   ProgressBar {
+                      anchors.bottom: line.bottom
+                      anchors.bottomMargin: -4
                       anchors.left: line.left
-                      anchors.leftMargin: 4
-                      anchors.verticalCenter: line.verticalCenter
-                      width: type.width - 4
+                      anchors.leftMargin: line.leftPadding
+                      width: line.width - 20
                       height: 6
                       value: DownloadProgress
                       visible: Status === QFieldCloudProjectsModel.ProjectStatus.Downloading

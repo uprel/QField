@@ -417,7 +417,8 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
   // //////////
   // 2) poll for download files export status until final status received
   // //////////
-  connect( this, &QFieldCloudProjectsModel::networkDownloadStatusChecked, this, [ = ]( const QString & uploadedProjectId )
+  QObject *networkDownloadStatusCheckedParent = new QObject( this ); // we need this to unsubscribe
+  connect( this, &QFieldCloudProjectsModel::networkDownloadStatusChecked, networkDownloadStatusCheckedParent, [ = ]( const QString & uploadedProjectId )
   {
     if ( projectId != uploadedProjectId )
       return;
@@ -438,9 +439,11 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
         } );
         break;
       case DownloadJobErrorStatus:
+        delete networkDownloadStatusCheckedParent;
         emit downloadFinished( projectId, true, mCloudProjects[index].downloadJobStatusString );
         return;
       case DownloadJobCreatedStatus:
+        delete networkDownloadStatusCheckedParent;
         // assumed that the file downloads are already in CloudProject.dowloadProjectFiles
         projectDownloadFiles( projectId );
         return;
@@ -834,10 +837,13 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   // //////////
   // 2) delta successfully uploaded, then send attachments
   // //////////
-  connect( this, &QFieldCloudProjectsModel::networkDeltaUploaded, this, [ = ]( const QString & uploadedProjectId )
+  QObject *networkDeltaUploadedParent = new QObject( this ); // we need this to unsubscribe
+  connect( this, &QFieldCloudProjectsModel::networkDeltaUploaded, networkDeltaUploadedParent, [ = ]( const QString & uploadedProjectId )
   {
     if ( projectId != uploadedProjectId )
       return;
+
+    delete networkDeltaUploadedParent;
 
     // attachments can be uploaded in the background.
     // ? what if an attachment fail to be uploaded?
@@ -862,7 +868,8 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   // //////////
   // 3) new delta status received. Never give up to get a successful status.
   // //////////
-  connect( this, &QFieldCloudProjectsModel::networkDeltaStatusChecked, this, [ = ]( const QString & uploadedProjectId )
+  QObject *networkDeltaStatusCheckedParent = new QObject( this ); // we need this to unsubscribe
+  connect( this, &QFieldCloudProjectsModel::networkDeltaStatusChecked, networkDeltaStatusCheckedParent, [ = ]( const QString & uploadedProjectId )
   {
     if ( projectId != uploadedProjectId )
       return;
@@ -883,6 +890,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         } );
         break;
       case DeltaFileErrorStatus:
+        delete networkDeltaStatusCheckedParent;
         deltaFile->resetId();
 
         if ( ! deltaFile->toFile() )
@@ -893,6 +901,8 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
       case DeltaFileAppliedStatus:
       case DeltaFileAppliedWithConflictsStatus:
       case DeltaFileNotAppliedStatus:
+        delete networkDeltaStatusCheckedParent;
+
         deltaFile->reset();
         deltaFile->resetId();
 

@@ -217,6 +217,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       FileTransfer() = default;
 
       QString fileName;
+      QString tmpFile;
       int bytesTotal;
       int bytesTransferred = 0;
       bool isFinished = false;
@@ -269,11 +270,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       int uploadAttachmentsFinished = 0;
       int uploadAttachmentsFailed = 0;
       int uploadAttachmentsBytesTotal = 0;
-
-      QMap<QString, FileTransfer> downloadLayers;
-      int downloadLayersFinished = 0;
-      int downloadLayersFailed = 0;
-      int downloadLayersBytesTotal = 0;
     };
 
     inline QString layerFileName( const QgsMapLayer *layer ) const;
@@ -292,6 +288,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void projectGetDeltaStatus( const QString &projectId );
     void projectGetDownloadStatus( const QString &projectId );
     void projectDownloadLayers( const QString &projectId );
+    bool projectMoveDownloadedFilesToPermanentStorage( const QString &projectId );
 
     NetworkReply *downloadFile( const QString &exportJobId, const QString &fileName );
     void projectDownloadFiles( const QString &projectId );

@@ -17,8 +17,8 @@ Page {
 
       showApplyButton: false
       showCancelButton: true
-      showBusyIndicator: cloudConnection.status === QFieldCloudConnection.Connecting ||
-                         cloudConnection.state === QFieldCloudConnection.Busy
+      busyIndicatorState: cloudConnection.status === QFieldCloudConnection.Connecting ||
+                         cloudConnection.state === QFieldCloudConnection.Busy ? 'on' : 'off'
 
       onFinished: parent.finished()
     }
@@ -128,15 +128,16 @@ Page {
                   property string projectOwner: Owner
                   property string projectName: Name
                   property string projectLocalPath: LocalPath
-                  width: parent.width
+                  width: parent ? parent.width : undefined
                   height: line.height
                   color: "transparent"
 
                   ProgressBar {
+                      anchors.bottom: line.bottom
+                      anchors.bottomMargin: -4
                       anchors.left: line.left
-                      anchors.leftMargin: 4
-                      anchors.verticalCenter: line.verticalCenter
-                      width: type.width - 4
+                      anchors.leftMargin: line.leftPadding
+                      width: line.width - 20
                       height: 6
                       value: DownloadProgress
                       visible: Status === QFieldCloudProjectsModel.ProjectStatus.Downloading
@@ -398,7 +399,7 @@ Page {
   Connections {
     target: cloudConnection
 
-    onStatusChanged: {
+    function onStatusChanged() {
       if ( cloudConnection.status === QFieldCloudConnection.LoggedIn )
         prepareCloudLogin();
     }

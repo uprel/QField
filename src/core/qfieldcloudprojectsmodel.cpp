@@ -24,6 +24,7 @@
 #include <qgsapplication.h>
 #include <qgsproject.h>
 #include <qgsproviderregistry.h>
+#include <qgsmessagelog.h>
 
 #include <QNetworkReply>
 #include <QTemporaryFile>
@@ -416,7 +417,8 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
   // //////////
   // 2) poll for download files export status until final status received
   // //////////
-  connect( this, &QFieldCloudProjectsModel::networkDownloadStatusChecked, this, [ = ]( const QString & uploadedProjectId )
+  QObject *networkDownloadStatusCheckedParent = new QObject( this ); // we need this to unsubscribe
+  connect( this, &QFieldCloudProjectsModel::networkDownloadStatusChecked, networkDownloadStatusCheckedParent, [ = ]( const QString & uploadedProjectId )
   {
     if ( projectId != uploadedProjectId )
       return;
@@ -437,9 +439,11 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
         } );
         break;
       case DownloadJobErrorStatus:
+        delete networkDownloadStatusCheckedParent;
         emit downloadFinished( projectId, true, mCloudProjects[index].downloadJobStatusString );
         return;
       case DownloadJobCreatedStatus:
+        delete networkDownloadStatusCheckedParent;
         // assumed that the file downloads are already in CloudProject.dowloadProjectFiles
         projectDownloadFiles( projectId );
         return;
@@ -511,7 +515,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
         int fileSize = fileObject.value( QStringLiteral( "size" ) ).toInt();
 
         mCloudProjects[index].downloadFileTransfers.insert( fileName, FileTransfer( fileName, fileSize ) );
-        mCloudProjects[index].downloadBytesTotal += std::min( fileSize, 0 );
+        mCloudProjects[index].downloadBytesTotal += std::max( fileSize, 0 );
       }
     }
     else if ( status == QStringLiteral( "ERROR" ) )
@@ -568,6 +572,8 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
     NetworkReply *reply = downloadFile( mCloudProjects[index].downloadJobId, fileName );
     QTemporaryFile *file = new QTemporaryFile( reply );
 
+    file->setAutoRemove( false );
+
     if ( ! file->open() )
     {
       QgsLogger::warning( QStringLiteral( "Failed to open temporary file for \"%1\", reason:\n%2" )
@@ -581,6 +587,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       return;
     }
 
+    mCloudProjects[index].downloadFileTransfers[fileName].tmpFile = file->fileName();
     mCloudProjects[index].downloadFileTransfers[fileName].networkReply = reply;
 
     connect( reply, &NetworkReply::downloadProgress, this, [ = ]( int bytesReceived, int bytesTotal )
@@ -602,7 +609,6 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
     {
       QVector<int> rolesChanged;
       QNetworkReply *rawReply = reply->reply();
-      reply->deleteLater();
 
       Q_ASSERT( reply->isFinished() );
       Q_ASSERT( reply );
@@ -623,34 +629,6 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
         QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
       }
 
-      QFileInfo fileInfo( fileName );
-      QDir dir( QStringLiteral( "%1/%2/%3" ).arg( QFieldCloudUtils::localCloudDirectory(), projectId, fileInfo.path() ) );
-
-      if ( ! hasError && ! dir.exists() && ! dir.mkpath( QStringLiteral( "." ) ) )
-      {
-        hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to create directory at \"%1\"" ).arg( dir.path() ) );
-      }
-
-      const QString destinationFileName( dir.filePath( fileInfo.fileName() ) );
-
-      // if the file already exists, we need to delete it first, as QT does not support overwriting
-      // NOTE: it is possible that someone creates the file in the meantime between this and the next if statement
-      if ( ! hasError && QFile::exists( destinationFileName ) && ! file->remove( destinationFileName ) )
-      {
-        hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to remove file before overwriting stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
-      }
-
-      if ( ! hasError && ! file->copy( destinationFileName ) )
-      {
-        hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
-
-        if ( ! QFile::remove( dir.filePath( fileName ) ) )
-          QgsLogger::warning( QStringLiteral( "Failed to remove partly overwritten file stored at \"%1\"" ).arg( fileName ) );
-      }
-
       if ( hasError )
       {
         mCloudProjects[index].downloadFilesFailed++;
@@ -662,6 +640,18 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
 
       if ( mCloudProjects[index].downloadFilesFinished == fileNames.count() )
       {
+        if ( ! hasError )
+        {
+          // move the files from their temporary location to their permanent one
+          if ( ! projectMoveDownloadedFilesToPermanentStorage( projectId ) )
+            mCloudProjects[index].errorStatus = DownloadErrorStatus;
+        }
+
+        for ( const QString &fileName : fileNames )
+        {
+          mCloudProjects[index].downloadFileTransfers[fileName].networkReply->deleteLater();
+        }
+
         emit projectDownloaded( projectId, false, mCloudProjects[index].name );
 
         mCloudProjects[index].status = ProjectStatus::Idle;
@@ -679,6 +669,58 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
 }
 
 
+bool QFieldCloudProjectsModel::projectMoveDownloadedFilesToPermanentStorage( const QString &projectId )
+{
+  if ( !mCloudConnection )
+    return false;
+
+  const int index = findProject( projectId );
+
+  if ( index == -1 || index >= mCloudProjects.size() )
+    return false;
+
+  bool hasError = false;
+  const QStringList fileNames = mCloudProjects[index].downloadFileTransfers.keys();
+
+  for ( const QString &fileName : fileNames )
+  {
+    QFileInfo fileInfo( fileName );
+    QFile file( mCloudProjects[index].downloadFileTransfers[fileName].tmpFile );
+    QDir dir( QStringLiteral( "%1/%2/%3" ).arg( QFieldCloudUtils::localCloudDirectory(), projectId, fileInfo.path() ) );
+
+    if ( ! hasError && ! dir.exists() && ! dir.mkpath( QStringLiteral( "." ) ) )
+    {
+      hasError = true;
+      QgsLogger::warning( QStringLiteral( "Failed to create directory at \"%1\"" ).arg( dir.path() ) );
+    }
+
+    const QString destinationFileName( dir.filePath( fileInfo.fileName() ) );
+
+    // if the file already exists, we need to delete it first, as QT does not support overwriting
+    // NOTE: it is possible that someone creates the file in the meantime between this and the next if statement
+    if ( ! hasError && QFile::exists( destinationFileName ) && ! file.remove( destinationFileName ) )
+    {
+      hasError = true;
+      QgsLogger::warning( QStringLiteral( "Failed to remove file before overwriting stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
+    }
+
+    if ( ! hasError && ! file.copy( destinationFileName ) )
+    {
+      hasError = true;
+      QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
+
+      if ( ! QFile::remove( dir.filePath( fileName ) ) )
+        QgsLogger::warning( QStringLiteral( "Failed to remove partly overwritten file stored at \"%1\"" ).arg( fileName ) );
+    }
+
+    if ( ! file.remove() )
+      QgsLogger::warning( QStringLiteral( "Failed to remove temporary file \"%1\"" ).arg( fileName ) );
+  }
+
+  return ! hasError;
+}
+
+
 void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bool shouldDownloadUpdates )
 {
   if ( !mCloudConnection )
@@ -692,8 +734,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   if ( !( mCloudProjects[index].status == ProjectStatus::Idle ) )
     return;
 
-
-  if ( mCurrentProjectChangesCount == 0 )
+  if ( shouldDownloadUpdates && mCurrentProjectChangesCount == 0 )
   {
     downloadProject( projectId );
     return;
@@ -732,7 +773,6 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
   emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadProgressRole );
 
-
   // //////////
   // prepare attachment files to be uploaded
   // //////////
@@ -753,7 +793,10 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   QString deltaFileToUpload = deltaFile->toFileForUpload();
 
   if ( deltaFileToUpload.isEmpty() )
-      return;
+  {
+    mCloudProjects[index].status = ProjectStatus::Idle;
+    return;
+  }
 
   // //////////
   // 1) send delta file
@@ -778,15 +821,9 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     {
       // TODO check why exactly we failed
       // maybe the project does not exist, then create it?
-      QgsLogger::warning( QStringLiteral( "Failed to upload delta file, reason:\n%1" ).arg( deltasReply->errorString() ) );
-
-      deltaFile->resetId();
-
-      if ( ! deltaFile->toFile() )
-        QgsLogger::warning( QStringLiteral( "Failed update committed delta file." ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to upload delta file, reason:\n%1" ).arg( deltasReply->errorString() ) );
 
       mCloudProjects[index].deltaFileUploadStatusString = deltasReply->errorString();
-
       projectCancelUpload( projectId );
       return;
     }
@@ -800,30 +837,39 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   // //////////
   // 2) delta successfully uploaded, then send attachments
   // //////////
-  connect( this, &QFieldCloudProjectsModel::networkDeltaUploaded, this, [ = ]( const QString & uploadedProjectId )
+  QObject *networkDeltaUploadedParent = new QObject( this ); // we need this to unsubscribe
+  connect( this, &QFieldCloudProjectsModel::networkDeltaUploaded, networkDeltaUploadedParent, [ = ]( const QString & uploadedProjectId )
   {
     if ( projectId != uploadedProjectId )
       return;
+
+    delete networkDeltaUploadedParent;
 
     // attachments can be uploaded in the background.
     // ? what if an attachment fail to be uploaded?
     projectUploadAttachments( projectId );
 
-    if ( mCloudProjects[index].uploadAttachmentsFailed != 0 )
+    if ( shouldDownloadUpdates )
     {
-      mCloudProjects[index].deltaFileUploadStatusString = QStringLiteral( "Some layers failed to download" );
-      projectCancelUpload( projectId );
-      return;
+      projectGetDeltaStatus( projectId );
     }
+    else
+    {
+      mCloudProjects[index].status = ProjectStatus::Idle;
 
-    projectGetDeltaStatus( projectId );
+      QModelIndex idx = createIndex( index, 0 );
+
+      emit dataChanged( idx, idx, QVector<int>() << StatusRole );
+      emit syncFinished( projectId, false );
+    }
   } );
 
 
   // //////////
   // 3) new delta status received. Never give up to get a successful status.
   // //////////
-  connect( this, &QFieldCloudProjectsModel::networkDeltaStatusChecked, this, [ = ]( const QString & uploadedProjectId )
+  QObject *networkDeltaStatusCheckedParent = new QObject( this ); // we need this to unsubscribe
+  connect( this, &QFieldCloudProjectsModel::networkDeltaStatusChecked, networkDeltaStatusCheckedParent, [ = ]( const QString & uploadedProjectId )
   {
     if ( projectId != uploadedProjectId )
       return;
@@ -843,8 +889,8 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
           projectGetDeltaStatus( projectId );
         } );
         break;
-      case DeltaFileNotAppliedStatus:
       case DeltaFileErrorStatus:
+        delete networkDeltaStatusCheckedParent;
         deltaFile->resetId();
 
         if ( ! deltaFile->toFile() )
@@ -854,6 +900,9 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         return;
       case DeltaFileAppliedStatus:
       case DeltaFileAppliedWithConflictsStatus:
+      case DeltaFileNotAppliedStatus:
+        delete networkDeltaStatusCheckedParent;
+
         deltaFile->reset();
         deltaFile->resetId();
 
@@ -1017,7 +1066,7 @@ void QFieldCloudProjectsModel::projectUploadAttachments( const QString &projectI
       if ( attachmentReply->error() != QNetworkReply::NoError )
       {
         mCloudProjects[index].uploadAttachmentsFailed++;
-        QgsLogger::warning( QStringLiteral( "Failed to upload attachment stored at \"%1\", reason:\n%2" )
+        QgsMessageLog::logMessage( tr( "Failed to upload attachment stored at \"%1\", reason:\n%2" )
                             .arg( fileName )
                             .arg( attachmentReply->errorString() ) );
       }
@@ -1259,15 +1308,15 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
 
   DeltaFileWrapper *dfw = mLayerObserver->committedDeltaFileWrapper();
 
-  updateCanCommitCurrentProject();
-  updateCanSyncCurrentProject();
-  updateCurrentProjectChangesCount();
-
   if ( ! dfw->applyReversed() )
     return false;
 
   dfw->reset();
   dfw->resetId();
+
+  updateCanCommitCurrentProject();
+  updateCanSyncCurrentProject();
+  updateCurrentProjectChangesCount();
 
   if ( ! dfw->toFile() )
     return false;

@@ -9,6 +9,7 @@ ToolBar {
   property alias showApplyButton: applyButton.visible
   property alias showCancelButton: cancelButton.visible
   property alias showBusyIndicator: busyIndicator.visible
+  property alias busyIndicatorState: busyIndicator.state
 
   height: 48
 
@@ -34,7 +35,34 @@ ToolBar {
       height: 6
       value: 50
       indeterminate: true
-      visible: false
+
+      state: "off"
+
+      visible: opacity > 0
+
+      states: [
+          State { name: 'on'
+                  PropertyChanges { target: busyIndicator; opacity: 1.0 }},
+          State { name: 'off'
+                  PropertyChanges { target: busyIndicator; opacity: 0.0 }}
+      ]
+      transitions: [
+        Transition {
+          from: "off"
+          to: "on"
+          SequentialAnimation {
+            NumberAnimation { target: busyIndicator; property: 'opacity'; duration: 100; }
+          }
+        },
+        Transition {
+          from: "on"
+          to: "off"
+          SequentialAnimation {
+            PauseAnimation { duration: 100 }
+            NumberAnimation { target: busyIndicator; property: 'opacity'; duration: 200; }
+          }
+        }
+      ]
     }
   }
 

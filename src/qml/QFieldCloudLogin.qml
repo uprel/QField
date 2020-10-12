@@ -78,7 +78,7 @@ Item {
       }
 
       Keys.onReturnPressed: loginFormSumbitHandler()
-      Keys.onReleased: {
+      onEditingFinished: {
         cloudConnection.url = text ? text : cloudConnection.defaultUrl
       }
     }
@@ -165,7 +165,7 @@ Item {
   Connections {
     target: cloudConnection
 
-    onStatusChanged: {
+    function onStatusChanged() {
       if ( cloudConnection.status === QFieldCloudConnection.LoggedIn )
         usernameField.text = cloudConnection.username
     }

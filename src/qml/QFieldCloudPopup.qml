@@ -262,8 +262,8 @@ Popup {
   Connections {
     target: cloudConnection
 
-    function onLoginChanged() {
-      if(cloudConnection.status !== QFieldCloudConnection.LoggedIn) {
+    function onStatusChanged() {
+      if (cloudConnection.status !== QFieldCloudConnection.LoggedIn) {
         visible = false
         displayToast(qsTr('Not logged in'))
       }

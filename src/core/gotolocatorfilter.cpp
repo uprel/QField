@@ -121,6 +121,11 @@ void GotoLocatorFilter::fetchResults( const QString &string, const QgsLocatorCon
           Q_UNUSED( e )
           return;
         }
+        catch(...)
+        {
+          // catch any other errors
+          return;
+        }
         data[QStringLiteral( "point" )] = transformedPoint;
       }
 
@@ -140,7 +145,7 @@ void GotoLocatorFilter::triggerResult( const QgsLocatorResult &result )
   triggerResultFromAction( result, Normal );
 }
 
-void GotoLocatorFilter::triggerResultFromAction( const QgsLocatorResult &result, const int actionId )
+void GotoLocatorFilter::triggerResultFromAction( const QgsLocatorResult &result, const int )
 {
   QVariantMap data = result.userData.toMap();
 

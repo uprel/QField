@@ -17,8 +17,8 @@ Page {
 
       showApplyButton: false
       showCancelButton: true
-      showBusyIndicator: cloudConnection.status === QFieldCloudConnection.Connecting ||
-                         cloudConnection.state === QFieldCloudConnection.Busy
+      busyIndicatorState: cloudConnection.status === QFieldCloudConnection.Connecting ||
+                         cloudConnection.state === QFieldCloudConnection.Busy ? 'on' : 'off'
 
       onFinished: parent.finished()
     }

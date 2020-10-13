@@ -17,6 +17,7 @@
 #include "qfieldcloudconnection.h"
 #include <qgsnetworkaccessmanager.h>
 #include <qgsapplication.h>
+#include <qgsmessagelog.h>
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QNetworkCookieJar>
@@ -110,7 +111,26 @@ void QFieldCloudConnection::login()
 
     if ( rawReply->error() != QNetworkReply::NoError )
     {
-      emit loginFailed( QStringLiteral( "%1 (HTTP Status %2)" ).arg( rawReply->errorString(), QString::number( rawReply->error() ) ) );
+      int httpCode = rawReply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
+
+      if ( httpCode == 400 )
+      {
+        emit loginFailed( tr( "Wrong username or password" ) );
+      }
+      else if ( rawReply->error() == QNetworkReply::HostNotFoundError )
+      {
+        emit loginFailed( tr( "Server not found, please check the server URL" ) );
+      }
+      else if ( rawReply->error() == QNetworkReply::TimeoutError )
+      {
+        emit loginFailed( tr( "Timeout error, please retry" ) );
+      }
+      else
+      {
+        emit loginFailed( tr( "Failed to login, please retry" ) );
+        QgsMessageLog::logMessage( QStringLiteral( "%1 (HTTP Status %2)" ).arg( rawReply->errorString() ).arg( httpCode ) );
+      }
+
       setStatus( ConnectionStatus::Disconnected );
       return;
     }
@@ -119,7 +139,7 @@ void QFieldCloudConnection::login()
 
     if ( resp.isEmpty() )
     {
-      emit loginFailed( QStringLiteral( "Failed to parse server response" ) );
+      emit loginFailed( tr( "Login temporary unavailable" ) );
       setStatus( ConnectionStatus::Disconnected );
       return;
     }

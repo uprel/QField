@@ -148,6 +148,34 @@ Item {
       Keys.onReturnPressed: loginFormSumbitHandler()
     }
 
+    Text {
+      id: loginFeedbackLabel
+      width: parent.width
+      visible: false
+      text: qsTr( "Failed to login" )
+      horizontalAlignment: Text.AlignHCenter
+      font: Theme.defaultFont
+      color: Theme.errorColor
+
+      Connections {
+        target: cloudConnection
+
+        function onLoginFailed(reason) {
+          loginFeedbackLabel.visible = true
+          loginFeedbackLabel.text = reason
+        }
+
+        function onStatusChanged() {
+          if (cloudConnection.status === QFieldCloudConnection.Connecting) {
+            loginFeedbackLabel.visible = false
+            loginFeedbackLabel.text = ''
+          } else {
+            loginFeedbackLabel.visible = cloudConnection.status === QFieldCloudConnection.Disconnected && loginFeedbackLabel.text.length
+          }
+        }
+      }
+    }
+
     FontMetrics {
       id: fontMetrics
       font: Theme.defaultFont

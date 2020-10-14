@@ -51,10 +51,11 @@ Item {
       width: parent.width
       visible: cloudConnection.status === QFieldCloudConnection.Disconnected
                && ( cloudConnection.url !== cloudConnection.defaultUrl || isServerUrlEditingActive )
-      text: qsTr( "Server URL. Empty to use the default." )
+      text: qsTr( "Server URL\n(Leave empty to use the default server)" )
       horizontalAlignment: Text.AlignHCenter
       font: Theme.defaultFont
       color: 'gray'
+      wrapMode: Text.WordWrap
     }
 
     TextField {

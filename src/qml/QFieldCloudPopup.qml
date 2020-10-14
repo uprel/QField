@@ -176,6 +176,8 @@ Popup {
 
         GridLayout {
           Layout.margins: 10
+          Layout.maximumWidth: 525
+          Layout.alignment: Qt.AlignHCenter
           id: mainInnerGrid
           width: parent.width
           visible: cloudConnection.status === QFieldCloudConnection.LoggedIn &&

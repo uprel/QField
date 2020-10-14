@@ -113,11 +113,7 @@ void QFieldCloudConnection::login()
     {
       int httpCode = rawReply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
 
-      if ( httpCode == 400 )
-      {
-        emit loginFailed( tr( "Wrong username or password" ) );
-      }
-      else if ( rawReply->error() == QNetworkReply::HostNotFoundError )
+      if ( rawReply->error() == QNetworkReply::HostNotFoundError )
       {
         emit loginFailed( tr( "Server not found, please check the server URL" ) );
       }
@@ -125,9 +121,18 @@ void QFieldCloudConnection::login()
       {
         emit loginFailed( tr( "Timeout error, please retry" ) );
       }
+      else if ( httpCode == 400 )
+      {
+        emit loginFailed( tr( "Wrong username or password" ) );
+      }
+      else if ( httpCode > 400 )
+      {
+        emit loginFailed( tr( "Server error, please retry" ) );
+        QgsMessageLog::logMessage( QStringLiteral( "%1 (HTTP Status %2)" ).arg( rawReply->errorString() ).arg( httpCode ) );
+      }
       else
       {
-        emit loginFailed( tr( "Failed to login, please retry" ) );
+        emit loginFailed( tr( "Network error, please retry" ) );
         QgsMessageLog::logMessage( QStringLiteral( "%1 (HTTP Status %2)" ).arg( rawReply->errorString() ).arg( httpCode ) );
       }
 

@@ -32,11 +32,21 @@ Popup {
       anchors.fill: parent
       spacing: 2
 
-      QFieldCloudLogin {
-        id: qfieldCloudLogin
+      ScrollView {
         Layout.fillWidth: true
         Layout.fillHeight: true
         Layout.margins: 10
+        height: parent.height
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        ScrollBar.vertical.policy: ScrollBar.AsNeeded
+        contentWidth: qfieldCloudLogin.width
+        contentHeight: qfieldCloudLogin.childrenRect.height
+        clip: true
+
+        QFieldCloudLogin {
+          id: qfieldCloudLogin
+          width: parent.parent.width
+        }
       }
 
       Item {

@@ -161,6 +161,9 @@ Item {
         target: cloudConnection
 
         function onLoginFailed(reason) {
+          if (!qfieldCloudLogin.parent.visible)
+            return
+
           loginFeedbackLabel.visible = true
           loginFeedbackLabel.text = reason
         }

@@ -69,7 +69,7 @@ VisibilityFadingRow {
       }
       else
       {
-        !screenHovering && geometryValid
+        geometryValid
       }
     }
     round: true
@@ -77,7 +77,8 @@ VisibilityFadingRow {
 
     onClicked: {
       // remove editing vertex for lines and polygons
-      removeVertex()
+      rubberbandModel.frozen = true
+      rubberbandModel.removeVertex()
       confirm()
     }
   }
@@ -96,11 +97,9 @@ VisibilityFadingRow {
 
   QfToolButton {
     id: addVertexButton
-    iconSource: {
-        Theme.getThemeIcon( "ic_add_white_24dp" )
-    }
+    iconSource: Theme.getThemeIcon( "ic_add_white_24dp" )
     round: true
-    visible: !screenHovering
+    enabled: !screenHovering
     bgcolor: {
         if (!showConfirmButton)
           Theme.darkGray
@@ -109,6 +108,16 @@ VisibilityFadingRow {
         else
           Theme.darkGray
     }
+
+    states: [
+        State { when: addVertexButton.enabled;
+            PropertyChanges {   target: addVertexButton; opacity: 1.0    }
+        },
+        State { when: !addVertexButton.enabled;
+            PropertyChanges {   target: addVertexButton; opacity: 0.0    }
+        }
+    ]
+    transitions: [ Transition { NumberAnimation { property: "opacity"; duration: 200 } } ]
 
     onClicked: {
       if ( Number( rubberbandModel.geometryType ) === QgsWkbTypes.PointGeometry ||

@@ -54,6 +54,37 @@ Item {
       }
 
       Text {
+        id: loginFeedbackLabel
+        Layout.fillWidth: true
+        visible: false
+        text: qsTr( "Failed to login" )
+        horizontalAlignment: Text.AlignHCenter
+        font: Theme.defaultFont
+        color: Theme.errorColor
+
+        Connections {
+          target: cloudConnection
+
+          function onLoginFailed(reason) {
+            if (!qfieldCloudLogin.parent.visible)
+              return
+
+            loginFeedbackLabel.visible = true
+            loginFeedbackLabel.text = reason
+          }
+
+          function onStatusChanged() {
+             if (cloudConnection.status === QFieldCloudConnection.Connecting) {
+              loginFeedbackLabel.visible = false
+              loginFeedbackLabel.text = ''
+            } else {
+              loginFeedbackLabel.visible = cloudConnection.status === QFieldCloudConnection.Disconnected && loginFeedbackLabel.text.length
+            }
+          }
+        }
+      }
+
+      Text {
         id: serverUrlLabel
         Layout.fillWidth: true
         visible: cloudConnection.status === QFieldCloudConnection.Disconnected
@@ -154,37 +185,6 @@ Item {
         }
 
         Keys.onReturnPressed: loginFormSumbitHandler()
-      }
-
-      Text {
-        id: loginFeedbackLabel
-        width: parent.width
-        visible: false
-        text: qsTr( "Failed to login" )
-        horizontalAlignment: Text.AlignHCenter
-        font: Theme.defaultFont
-        color: Theme.errorColor
-
-        Connections {
-          target: cloudConnection
-
-          function onLoginFailed(reason) {
-            if (!qfieldCloudLogin.parent.visible)
-              return
-
-            loginFeedbackLabel.visible = true
-            loginFeedbackLabel.text = reason
-          }
-
-          function onStatusChanged() {
-             if (cloudConnection.status === QFieldCloudConnection.Connecting) {
-              loginFeedbackLabel.visible = false
-              loginFeedbackLabel.text = ''
-            } else {
-              loginFeedbackLabel.visible = cloudConnection.status === QFieldCloudConnection.Disconnected && loginFeedbackLabel.text.length
-            }
-          }
-        }
       }
 
       FontMetrics {

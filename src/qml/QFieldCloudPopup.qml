@@ -123,7 +123,7 @@ Popup {
             Image {
               anchors.fill: parent
               id: cloudAvatar
-              source: 'qrc:/images/qfieldcloud-logo.png'
+              source: 'qrc:/images/qfieldcloud_logo.svg'
               width: 48
               height: 48
               sourceSize.width: 48 * screen.devicePixelRatio

@@ -143,8 +143,8 @@ Popup {
                    cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading
           font: Theme.defaultFont
           text: switch(cloudProjectsModel.currentProjectData.Status ) {
-                  case QFieldCloudProjectsModel.Downloading: qsTr('Downloading…'); break;
-                  case QFieldCloudProjectsModel.Uploading: qsTr('Uploading…'); break;
+                  case QFieldCloudProjectsModel.Downloading: qsTr('Downloading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.DownloadProgress * 100) ); break;
+                  case QFieldCloudProjectsModel.Uploading: qsTr('Uploading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.UploadProgress * 100) ); break;
                   default: '';
                 }
           wrapMode: Text.WordWrap

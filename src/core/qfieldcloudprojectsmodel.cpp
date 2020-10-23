@@ -18,6 +18,7 @@
 #include "qfieldcloudutils.h"
 #include "layerobserver.h"
 #include "deltafilewrapper.h"
+#include "qfield.h"
 
 #include <qgis.h>
 #include <qgsnetworkaccessmanager.h>
@@ -63,6 +64,8 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
     if ( index == -1 || index >= mCloudProjects.size() )
       return;
 
+    emit currentProjectDataChanged();
+
     refreshProjectModification( mCurrentProjectId );
 
     updateCanCommitCurrentProject();
@@ -90,6 +93,7 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
       {
         emit currentProjectStatusChanged();
       }
+      emit currentProjectDataChanged();
     }
   } );
 }
@@ -150,6 +154,7 @@ void QFieldCloudProjectsModel::setCurrentProjectId( const QString &currentProjec
 
   mCurrentProjectId = currentProjectId;
   emit currentProjectIdChanged();
+  emit currentProjectDataChanged();
 }
 
 QFieldCloudProjectsModel::ProjectStatus QFieldCloudProjectsModel::currentProjectStatus() const
@@ -160,6 +165,31 @@ QFieldCloudProjectsModel::ProjectStatus QFieldCloudProjectsModel::currentProject
     return ProjectStatus::Idle;
 
   return mCloudProjects[index].status;
+}
+
+QVariantMap QFieldCloudProjectsModel::currentProjectData() const
+{
+  return getProjectData( mCurrentProjectId );
+}
+
+QVariantMap QFieldCloudProjectsModel::getProjectData( const QString projectId ) const
+{
+  QVariantMap data;
+
+  const int index = findProject( projectId );
+  const QModelIndex idx = this->index( index, 0 );
+
+  if( !idx.isValid() )
+      return data;
+
+  const QHash<int, QByteArray> rn = this->roleNames();
+
+  for ( auto [ key, value ] : qfield::asKeyValueRange( rn ) )
+  {
+    data[value] = idx.data( key );
+  }
+
+  return data;
 }
 
 void QFieldCloudProjectsModel::refreshProjectsList()

@@ -135,6 +135,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     Q_PROPERTY( QString currentProjectId READ currentProjectId WRITE setCurrentProjectId NOTIFY currentProjectIdChanged )
     Q_PROPERTY( ProjectStatus currentProjectStatus READ currentProjectStatus NOTIFY currentProjectStatusChanged )
+    Q_PROPERTY( QVariant currentProjectData READ currentProjectData NOTIFY currentProjectDataChanged )
     Q_PROPERTY( int currentProjectChangesCount READ currentProjectChangesCount NOTIFY currentProjectChangesCountChanged )
     Q_PROPERTY( bool canCommitCurrentProject READ canCommitCurrentProject NOTIFY canCommitCurrentProjectChanged )
     Q_PROPERTY( bool canSyncCurrentProject READ canSyncCurrentProject NOTIFY canSyncCurrentProjectChanged )
@@ -143,8 +144,11 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void setCurrentProjectId( const QString &currentProjectId );
 
     ProjectStatus currentProjectStatus() const;
+    QVariantMap currentProjectData() const;
+
     int currentProjectChangesCount() const;
 
+    Q_INVOKABLE QVariantMap getProjectData( const QString projectId ) const;
     Q_INVOKABLE void refreshProjectsList();
     Q_INVOKABLE void downloadProject( const QString &projectId );
     Q_INVOKABLE void uploadProject( const QString &projectId, const bool shouldDownloadUpdates );
@@ -158,7 +162,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     Q_INVOKABLE ProjectModifications projectModification( const QString &projectId ) const;
     Q_INVOKABLE void refreshProjectModification( const QString &projectId );
 
-    QHash<int, QByteArray> roleNames() const;
+    QHash<int, QByteArray> roleNames() const override;
 
     int rowCount( const QModelIndex &parent ) const override;
     QVariant data( const QModelIndex &index, int role ) const override;
@@ -170,6 +174,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void layerObserverChanged();
     void currentProjectIdChanged();
     void currentProjectStatusChanged();
+    void currentProjectDataChanged();
     void currentProjectChangesCountChanged();
     void canCommitCurrentProjectChanged();
     void canSyncCurrentProjectChanged();

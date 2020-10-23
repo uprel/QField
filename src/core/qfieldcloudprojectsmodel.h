@@ -135,8 +135,12 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     Q_PROPERTY( QString currentProjectId READ currentProjectId WRITE setCurrentProjectId NOTIFY currentProjectIdChanged )
     Q_PROPERTY( QVariant currentProjectData READ currentProjectData NOTIFY currentProjectDataChanged )
+
+    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
     Q_PROPERTY( int currentProjectChangesCount READ currentProjectChangesCount NOTIFY currentProjectChangesCountChanged )
+    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
     Q_PROPERTY( bool canCommitCurrentProject READ canCommitCurrentProject NOTIFY canCommitCurrentProjectChanged )
+    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
     Q_PROPERTY( bool canSyncCurrentProject READ canSyncCurrentProject NOTIFY canSyncCurrentProjectChanged )
 
     QString currentProjectId() const;

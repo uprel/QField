@@ -89,10 +89,6 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
     // current project
     if ( topLeft.row() == index )
     {
-      if ( roles.contains( static_cast<int>( ColumnRole::StatusRole ) ) )
-      {
-        emit currentProjectStatusChanged();
-      }
       emit currentProjectDataChanged();
     }
   } );
@@ -155,16 +151,6 @@ void QFieldCloudProjectsModel::setCurrentProjectId( const QString &currentProjec
   mCurrentProjectId = currentProjectId;
   emit currentProjectIdChanged();
   emit currentProjectDataChanged();
-}
-
-QFieldCloudProjectsModel::ProjectStatus QFieldCloudProjectsModel::currentProjectStatus() const
-{
-  const int index = findProject( mCurrentProjectId );
-
-  if ( index == -1 || index >= mCloudProjects.size() )
-    return ProjectStatus::Idle;
-
-  return mCloudProjects[index].status;
 }
 
 QVariantMap QFieldCloudProjectsModel::currentProjectData() const

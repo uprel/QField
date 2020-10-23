@@ -134,7 +134,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void setLayerObserver( LayerObserver *layerObserver );
 
     Q_PROPERTY( QString currentProjectId READ currentProjectId WRITE setCurrentProjectId NOTIFY currentProjectIdChanged )
-    Q_PROPERTY( ProjectStatus currentProjectStatus READ currentProjectStatus NOTIFY currentProjectStatusChanged )
     Q_PROPERTY( QVariant currentProjectData READ currentProjectData NOTIFY currentProjectDataChanged )
     Q_PROPERTY( int currentProjectChangesCount READ currentProjectChangesCount NOTIFY currentProjectChangesCountChanged )
     Q_PROPERTY( bool canCommitCurrentProject READ canCommitCurrentProject NOTIFY canCommitCurrentProjectChanged )
@@ -143,7 +142,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     QString currentProjectId() const;
     void setCurrentProjectId( const QString &currentProjectId );
 
-    ProjectStatus currentProjectStatus() const;
     QVariantMap currentProjectData() const;
 
     int currentProjectChangesCount() const;
@@ -173,7 +171,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void cloudConnectionChanged();
     void layerObserverChanged();
     void currentProjectIdChanged();
-    void currentProjectStatusChanged();
     void currentProjectDataChanged();
     void currentProjectChangesCountChanged();
     void canCommitCurrentProjectChanged();

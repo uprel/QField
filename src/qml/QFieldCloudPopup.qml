@@ -121,16 +121,18 @@ Popup {
             Layout.margins: 10
             width: 48
             height: 48
+            color: 'transparent'
 
             Image {
-              anchors.fill: parent
               id: cloudAvatar
+              anchors.fill: parent
+              fillMode: Image.PreserveAspectFit
+              smooth: true
               source: 'qrc:/images/qfieldcloud_logo.svg'
               width: 48
               height: 48
-              sourceSize.width: 48 * screen.devicePixelRatio
-              sourceSize.height: 48 * screen.devicePixelRatio
-              fillMode: Image.PreserveAspectFit
+              sourceSize.width: width * screen.devicePixelRatio
+              sourceSize.height: height * screen.devicePixelRatio
             }
           }
         }

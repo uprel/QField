@@ -276,6 +276,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       int uploadAttachmentsFinished = 0;
       int uploadAttachmentsFailed = 0;
       int uploadAttachmentsBytesTotal = 0;
+      double uploadAttachmentsProgress = 0.0; // range from 0.0 to 1.0
     };
 
     inline QString layerFileName( const QgsMapLayer *layer ) const;

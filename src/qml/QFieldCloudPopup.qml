@@ -15,13 +15,13 @@ Popup {
     header: PageHeader {
       title: qsTr('QFieldCloud')
 
-      showApplyButton: false
-      showCancelButton: cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Idle
+      showCancelButton: false
+      showApplyButton: cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Idle
       showBusyIndicator: cloudConnection.status === QFieldCloudConnection.Connecting ||
                          cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading ||
                          cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Downloading
 
-      onCancel: {
+      onFinished: {
         popup.close()
       }
     }

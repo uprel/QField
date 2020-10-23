@@ -8,7 +8,6 @@ ToolBar {
   property alias title: titleLabel.text
   property alias showApplyButton: applyButton.visible
   property alias showCancelButton: cancelButton.visible
-  property alias showBusyIndicator: busyIndicator.visible
   property alias busyIndicatorState: busyIndicator.state
 
   height: 48

@@ -17,9 +17,11 @@ Popup {
 
       showCancelButton: false
       showApplyButton: cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Idle
-      showBusyIndicator: cloudConnection.status === QFieldCloudConnection.Connecting ||
-                         cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading ||
-                         cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Downloading
+      busyIndicatorState: cloudConnection.status === QFieldCloudConnection.Connecting
+            || cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading
+            || cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Downloading
+            ? 'on'
+            : 'off'
 
       onFinished: {
         popup.close()

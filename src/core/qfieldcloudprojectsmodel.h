@@ -134,17 +134,23 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void setLayerObserver( LayerObserver *layerObserver );
 
     Q_PROPERTY( QString currentProjectId READ currentProjectId WRITE setCurrentProjectId NOTIFY currentProjectIdChanged )
-    Q_PROPERTY( ProjectStatus currentProjectStatus READ currentProjectStatus NOTIFY currentProjectStatusChanged )
+    Q_PROPERTY( QVariant currentProjectData READ currentProjectData NOTIFY currentProjectDataChanged )
+
+    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
     Q_PROPERTY( int currentProjectChangesCount READ currentProjectChangesCount NOTIFY currentProjectChangesCountChanged )
+    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
     Q_PROPERTY( bool canCommitCurrentProject READ canCommitCurrentProject NOTIFY canCommitCurrentProjectChanged )
+    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
     Q_PROPERTY( bool canSyncCurrentProject READ canSyncCurrentProject NOTIFY canSyncCurrentProjectChanged )
 
     QString currentProjectId() const;
     void setCurrentProjectId( const QString &currentProjectId );
 
-    ProjectStatus currentProjectStatus() const;
+    QVariantMap currentProjectData() const;
+
     int currentProjectChangesCount() const;
 
+    Q_INVOKABLE QVariantMap getProjectData( const QString projectId ) const;
     Q_INVOKABLE void refreshProjectsList();
     Q_INVOKABLE void downloadProject( const QString &projectId );
     Q_INVOKABLE void uploadProject( const QString &projectId, const bool shouldDownloadUpdates );
@@ -158,7 +164,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     Q_INVOKABLE ProjectModifications projectModification( const QString &projectId ) const;
     Q_INVOKABLE void refreshProjectModification( const QString &projectId );
 
-    QHash<int, QByteArray> roleNames() const;
+    QHash<int, QByteArray> roleNames() const override;
 
     int rowCount( const QModelIndex &parent ) const override;
     QVariant data( const QModelIndex &index, int role ) const override;
@@ -169,7 +175,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void cloudConnectionChanged();
     void layerObserverChanged();
     void currentProjectIdChanged();
-    void currentProjectStatusChanged();
+    void currentProjectDataChanged();
     void currentProjectChangesCountChanged();
     void canCommitCurrentProjectChanged();
     void canSyncCurrentProjectChanged();
@@ -270,6 +276,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       int uploadAttachmentsFinished = 0;
       int uploadAttachmentsFailed = 0;
       int uploadAttachmentsBytesTotal = 0;
+      double uploadAttachmentsProgress = 0.0; // range from 0.0 to 1.0
     };
 
     inline QString layerFileName( const QgsMapLayer *layer ) const;

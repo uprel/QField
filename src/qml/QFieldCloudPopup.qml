@@ -15,13 +15,15 @@ Popup {
     header: PageHeader {
       title: qsTr('QFieldCloud')
 
-      showApplyButton: false
-      showCancelButton: cloudProjectsModel.currentProjectStatus === QFieldCloudProjectsModel.Idle
-      showBusyIndicator: cloudConnection.status === QFieldCloudConnection.Connecting ||
-                         cloudProjectsModel.currentProjectStatus === QFieldCloudProjectsModel.Uploading ||
-                         cloudProjectsModel.currentProjectStatus === QFieldCloudProjectsModel.Downloading
+      showCancelButton: false
+      showApplyButton: cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Idle
+      busyIndicatorState: cloudConnection.status === QFieldCloudConnection.Connecting
+            || cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading
+            || cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Downloading
+            ? 'on'
+            : 'off'
 
-      onCancel: {
+      onFinished: {
         popup.close()
       }
     }
@@ -119,28 +121,30 @@ Popup {
             Layout.margins: 10
             width: 48
             height: 48
+            color: 'transparent'
 
             Image {
-              anchors.fill: parent
               id: cloudAvatar
+              anchors.fill: parent
+              fillMode: Image.PreserveAspectFit
+              smooth: true
               source: 'qrc:/images/qfieldcloud_logo.svg'
               width: 48
               height: 48
-              sourceSize.width: 48 * screen.devicePixelRatio
-              sourceSize.height: 48 * screen.devicePixelRatio
-              fillMode: Image.PreserveAspectFit
+              sourceSize.width: width * screen.devicePixelRatio
+              sourceSize.height: height * screen.devicePixelRatio
             }
           }
         }
 
         Text {
           id: statusText
-          visible: cloudProjectsModel.currentProjectStatus === QFieldCloudProjectsModel.Downloading ||
-                   cloudProjectsModel.currentProjectStatus === QFieldCloudProjectsModel.Uploading
+          visible: cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Downloading ||
+                   cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading
           font: Theme.defaultFont
-          text: switch(cloudProjectsModel.currentProjectStatus ) {
-                  case QFieldCloudProjectsModel.Downloading: qsTr('Downloading…'); break;
-                  case QFieldCloudProjectsModel.Uploading: qsTr('Uploading…'); break;
+          text: switch(cloudProjectsModel.currentProjectData.Status ) {
+                  case QFieldCloudProjectsModel.Downloading: qsTr('Downloading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.DownloadProgress * 100) ); break;
+                  case QFieldCloudProjectsModel.Uploading: qsTr('Uploading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.UploadProgress * 100) ); break;
                   default: '';
                 }
           wrapMode: Text.WordWrap
@@ -162,14 +166,14 @@ Popup {
             target: cloudProjectsModel
 
             function onSyncFinished(projectId, hasError, errorString) {
-              transferErrorText.visible = hasError && cloudProjectsModel.currentProjectStatus === QFieldCloudProjectsModel.Idle;
+              transferErrorText.visible = hasError && cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Idle;
 
               if (transferErrorText.visible)
                 transferErrorText.text = errorString
             }
 
             function onDataChanged() {
-              transferErrorText.visible = cloudProjectsModel.currentProjectStatus === QFieldCloudProjectsModel.Idle;
+              transferErrorText.visible = cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Idle;
             }
           }
         }
@@ -181,7 +185,7 @@ Popup {
           id: mainInnerGrid
           width: parent.width
           visible: cloudConnection.status === QFieldCloudConnection.LoggedIn &&
-                   cloudProjectsModel.currentProjectStatus === QFieldCloudProjectsModel.Idle
+                   cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Idle
           columns: 1
           columnSpacing: parent.columnSpacing
           rowSpacing: parent.rowSpacing

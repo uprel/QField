@@ -18,6 +18,7 @@
 #include "qfieldcloudutils.h"
 #include "layerobserver.h"
 #include "deltafilewrapper.h"
+#include "qfield.h"
 
 #include <qgis.h>
 #include <qgsnetworkaccessmanager.h>
@@ -63,6 +64,8 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
     if ( index == -1 || index >= mCloudProjects.size() )
       return;
 
+    emit currentProjectDataChanged();
+
     refreshProjectModification( mCurrentProjectId );
 
     updateCanCommitCurrentProject();
@@ -86,10 +89,7 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
     // current project
     if ( topLeft.row() == index )
     {
-      if ( roles.contains( static_cast<int>( ColumnRole::StatusRole ) ) )
-      {
-        emit currentProjectStatusChanged();
-      }
+      emit currentProjectDataChanged();
     }
   } );
 }
@@ -150,16 +150,32 @@ void QFieldCloudProjectsModel::setCurrentProjectId( const QString &currentProjec
 
   mCurrentProjectId = currentProjectId;
   emit currentProjectIdChanged();
+  emit currentProjectDataChanged();
 }
 
-QFieldCloudProjectsModel::ProjectStatus QFieldCloudProjectsModel::currentProjectStatus() const
+QVariantMap QFieldCloudProjectsModel::currentProjectData() const
 {
-  const int index = findProject( mCurrentProjectId );
+  return getProjectData( mCurrentProjectId );
+}
 
-  if ( index == -1 || index >= mCloudProjects.size() )
-    return ProjectStatus::Idle;
+QVariantMap QFieldCloudProjectsModel::getProjectData( const QString projectId ) const
+{
+  QVariantMap data;
 
-  return mCloudProjects[index].status;
+  const int index = findProject( projectId );
+  const QModelIndex idx = this->index( index, 0 );
+
+  if( !idx.isValid() )
+      return data;
+
+  const QHash<int, QByteArray> rn = this->roleNames();
+
+  for ( auto [ key, value ] : qfield::asKeyValueRange( rn ) )
+  {
+    data[value] = idx.data( key );
+  }
+
+  return data;
 }
 
 void QFieldCloudProjectsModel::refreshProjectsList()
@@ -1058,10 +1074,6 @@ void QFieldCloudProjectsModel::projectUploadAttachments( const QString &projectI
       Q_ASSERT( attachmentCloudReply->isFinished() );
       Q_ASSERT( attachmentReply );
 
-      mCloudProjects[index].uploadAttachmentsFinished++;
-
-      emit dataChanged( idx, idx, QVector<int>() << UploadProgressRole );
-
       // if there is an error, don't panic, we continue uploading. The files may be later manually synced.
       if ( attachmentReply->error() != QNetworkReply::NoError )
       {
@@ -1070,6 +1082,10 @@ void QFieldCloudProjectsModel::projectUploadAttachments( const QString &projectI
                             .arg( fileName )
                             .arg( attachmentReply->errorString() ) );
       }
+
+      mCloudProjects[index].uploadAttachmentsFinished++;
+      mCloudProjects[index].uploadAttachmentsProgress = mCloudProjects[index].uploadAttachmentsFinished / attachmentFileNames.size();
+      emit dataChanged( idx, idx, QVector<int>() << UploadProgressRole );
     } );
   }
 }
@@ -1182,6 +1198,7 @@ QHash<int, QByteArray> QFieldCloudProjectsModel::roleNames() const
   roles[ErrorStatusRole] = "ErrorStatus";
   roles[ErrorStringRole] = "ErrorString";
   roles[DownloadProgressRole] = "DownloadProgress";
+  roles[UploadProgressRole] = "UploadProgress";
   roles[LocalPathRole] = "LocalPath";
   return roles;
 }
@@ -1287,8 +1304,8 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
     case DownloadProgressRole:
       return mCloudProjects.at( index.row() ).downloadProgress;
     case UploadProgressRole:
-      // TODO
-      return 1;
+      // when we start syncing also the photos, it would make sense to go there
+      return 0.5 + 0.5 * (mCloudProjects.at( index.row() ).uploadAttachmentsProgress);
     case LocalPathRole:
       return mCloudProjects.at( index.row() ).localPath;
   }

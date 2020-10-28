@@ -376,10 +376,10 @@ QMap<QString, QString> DeltaFileWrapper::attachmentFileNames() const
   for ( const QJsonValue &deltaJson : qgis::as_const( mDeltas ) )
   {
     QVariantMap delta = deltaJson.toObject().toVariantMap();
-    const QString layerId = delta.value( QStringLiteral( "layerId" ) ).toString();
+    const QString localLayerId = delta.value( QStringLiteral( "localLayerId" ) ).toString();
     const QString method = delta.value( QStringLiteral( "method" ) ).toString();
-    const QString fid = delta.value( QStringLiteral( "fid" ) ).toString();
-    const QStringList attachmentFieldNamesList = attachmentFieldNames( mProject, layerId );
+    const QString localPk = delta.value( QStringLiteral( "localPk" ) ).toString();
+    const QStringList attachmentFieldNamesList = attachmentFieldNames( mProject, localLayerId );
 
     if ( method == QStringLiteral( "delete" ) || method == QStringLiteral( "patch" ) )
     {
@@ -412,7 +412,7 @@ QMap<QString, QString> DeltaFileWrapper::attachmentFileNames() const
 
           Q_ASSERT( filesChecksum.contains( fileName ) );
 
-          const QString key = QStringLiteral( "%1//%2//%3" ).arg( layerId, fid, fieldName );
+          const QString key = QStringLiteral( "%1//%2//%3" ).arg( localLayerId, localPk, fieldName );
           const QString fileChecksum = filesChecksum.value( fileName ).toString();
 
           fileNames.insert( key, fileName );

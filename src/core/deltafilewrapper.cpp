@@ -713,7 +713,7 @@ bool DeltaFileWrapper::applyInternal( bool shouldApplyInReverse )
   for ( const QJsonValue &deltaJson : qgis::as_const( mDeltas ) )
   {
     const QVariantMap delta = deltaJson.toObject().toVariantMap();
-    const QString layerId = delta.value( QStringLiteral( "layerId" ) ).toString();
+    const QString layerId = delta.value( QStringLiteral( "localLayerId" ) ).toString();
 
     QgsVectorLayer *vl = static_cast<QgsVectorLayer *>( mProject->mapLayer( layerId ) );
 
@@ -782,9 +782,10 @@ bool DeltaFileWrapper::applyDeltasOnLayers( QHash<QString, QgsVectorLayer *> &ve
   for ( const QJsonValue &deltaJson : qgis::as_const( deltas ) )
   {
     const QVariantMap delta = deltaJson.toObject().toVariantMap();
-    const QString layerId = delta.value( QStringLiteral( "layerId" ) ).toString();
-    const QString tmpDeltaFid = delta.value( QStringLiteral( "tmpFid" ) ).toString();
-//    const QStringList attachmentFieldNamesList = attachmentFieldNames( mProject, layerId );
+    const QString layerId = delta.value( QStringLiteral( "localLayerId" ) ).toString();
+    const QString localPk = delta.value( QStringLiteral( "localPk" ) ).toString();
+    // temporary disable attachment checks, enable them when clear how to proceed
+    //    const QStringList attachmentFieldNamesList = attachmentFieldNames( mProject, layerId );
     const QgsFields fields = vectorLayers[layerId]->fields();
     const QPair<int, QString> pkAttrPair = getLocalPkAttribute( vectorLayers[layerId] );
 
@@ -810,7 +811,7 @@ bool DeltaFileWrapper::applyDeltasOnLayers( QHash<QString, QgsVectorLayer *> &ve
 
     if ( method != QStringLiteral( "create" ) )
     {
-      QgsExpression expr( QStringLiteral( " %1 = %2 " ).arg( QgsExpression::quotedColumnRef( pkAttrPair.second ), QgsExpression::quotedString( tmpDeltaFid ) ) );
+      QgsExpression expr( QStringLiteral( " %1 = %2 " ).arg( QgsExpression::quotedColumnRef( pkAttrPair.second ), QgsExpression::quotedString( localPk ) ) );
       QgsFeatureIterator it = vectorLayers[layerId]->getFeatures( QgsFeatureRequest( expr ) );
 
       if ( ! it.nextFeature( f ) )

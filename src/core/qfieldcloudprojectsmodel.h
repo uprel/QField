@@ -159,6 +159,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     /**
      * Reverts the changes of the current cloud project.
      */
+    Q_INVOKABLE bool revertLocalChangesFromCurrentProject();
     Q_INVOKABLE bool discardLocalChangesFromCurrentProject();
     Q_INVOKABLE ProjectStatus projectStatus( const QString &projectId );
     Q_INVOKABLE ProjectModifications projectModification( const QString &projectId ) const;

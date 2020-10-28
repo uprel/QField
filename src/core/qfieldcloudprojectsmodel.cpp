@@ -1321,7 +1321,7 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
   return QVariant();
 }
 
-bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
+bool QFieldCloudProjectsModel::revertLocalChangesFromCurrentProject()
 {
   const int index = findProject( mCurrentProjectId );
 
@@ -1351,6 +1351,32 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
   updateCurrentProjectChangesCount();
 
   if ( ! dfw->toFile() )
+    return false;
+
+  return true;
+}
+
+bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
+{
+  const int index = findProject( mCurrentProjectId );
+
+  if ( index == -1 || index >= mCloudProjects.size() )
+    return false;
+
+  DeltaFileWrapper *dfwCurrent = mLayerObserver->committedDeltaFileWrapper();
+  DeltaFileWrapper *dfwCommitted = mLayerObserver->committedDeltaFileWrapper();
+
+  if ( ! mLayerObserver->commit() )
+    QgsMessageLog::logMessage( QStringLiteral( "Failed to commit" ) );
+
+  dfwCommitted->reset();
+  dfwCommitted->resetId();
+
+  updateCanCommitCurrentProject();
+  updateCanSyncCurrentProject();
+  updateCurrentProjectChangesCount();
+
+  if ( ! dfwCurrent->toFile() || ! dfwCommitted->toFile() )
     return false;
 
   return true;

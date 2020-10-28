@@ -252,10 +252,14 @@ Popup {
             Layout.fillWidth: true
             font: Theme.defaultFont
             bgcolor: Theme.darkRed
-            text: qsTr('Discard local changes')
+            text: qsTr('Revert local changes')
             enabled: cloudProjectsModel.currentProjectChangesCount > 0
 
             onClicked: {
+              revertDialog.open();
+            }
+
+            onPressAndHold: {
               discardDialog.open();
             }
           }
@@ -288,6 +292,37 @@ Popup {
 
 
   Dialog {
+    id: revertDialog
+    parent: mainWindow.contentItem
+
+    property int selectedCount: 0
+    property bool isDeleted: false
+
+    visible: false
+    modal: true
+
+    x: ( mainWindow.width - width ) / 2
+    y: ( mainWindow.height - height ) / 2
+
+    title: qsTr( "Revert local changes" )
+    Label {
+      width: parent.width
+      wrapMode: Text.WordWrap
+      text: qsTr( "Should local changes be reverted?" )
+    }
+
+    standardButtons: Dialog.Ok | Dialog.Cancel
+
+    onAccepted: {
+      revertLocalChangesFromCurrentProject();
+    }
+    onRejected: {
+      visible = false
+      popup.focus = true;
+    }
+  }
+
+  Dialog {
     id: discardDialog
     parent: mainWindow.contentItem
 
@@ -304,7 +339,7 @@ Popup {
     Label {
       width: parent.width
       wrapMode: Text.WordWrap
-      text: qsTr( "Should local changes be discarded?" )
+      text: qsTr( "Discarding local changes may result in QFieldCloud conflicts. Should local changes be discarded?" )
     }
 
     standardButtons: Dialog.Ok | Dialog.Cancel
@@ -333,6 +368,19 @@ Popup {
       cloudProjectsModel.uploadProject(cloudProjectsModel.currentProjectId, shouldDownloadUpdates)
       return
     }
+  }
+
+  function revertLocalChangesFromCurrentProject() {
+    if (cloudProjectsModel.canCommitCurrentProject || cloudProjectsModel.canSyncCurrentProject) {
+      if ( cloudProjectsModel.revertLocalChangesFromCurrentProject(cloudProjectsModel.currentProjectId) )
+        displayToast(qsTr('Local changes reverted'))
+      else
+        displayToast(qsTr('Failed to revert changes'))
+
+      return
+    }
+
+    displayToast(qsTr('No changes to revert'))
   }
 
   function discardLocalChangesFromCurrentProject() {

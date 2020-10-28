@@ -837,7 +837,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     {
       // TODO check why exactly we failed
       // maybe the project does not exist, then create it?
-      QgsMessageLog::logMessage( QStringLiteral( "Failed to upload delta file, reason:\n%1" ).arg( deltasReply->errorString() ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to upload delta file, reason:\n%1\n%2" ).arg( deltasReply->errorString(), deltasReply->readAll() ) );
 
       mCloudProjects[index].deltaFileUploadStatusString = deltasReply->errorString();
       projectCancelUpload( projectId );
@@ -1329,12 +1329,19 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
     return false;
 
   if ( ! mLayerObserver->commit() )
+  {
+    QgsMessageLog::logMessage( QStringLiteral( "Failed to commit" ) );
     return false;
+  }
 
   DeltaFileWrapper *dfw = mLayerObserver->committedDeltaFileWrapper();
 
   if ( ! dfw->applyReversed() )
+  {
+    QgsMessageLog::logMessage( QStringLiteral( "Failed to apply reversed" ) );
     return false;
+  }
+
 
   dfw->reset();
   dfw->resetId();

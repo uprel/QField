@@ -253,7 +253,7 @@ Popup {
             font: Theme.defaultFont
             bgcolor: Theme.darkRed
             text: qsTr('Discard local changes')
-            enabled: cloudProjectsModel.canCommitCurrentProject
+            enabled: cloudProjectsModel.currentProjectChangesCount > 0
 
             onClicked: {
               discardDialog.open();

@@ -69,9 +69,6 @@ class DeltaFileWrapper : public QObject
      */
     DeltaFileWrapper( const QgsProject *project, const QString &fileName );
 
-    DeltaFileWrapper( const QString &projectId, const QString &fileName );
-    DeltaFileWrapper( const QgsProject *project, const QString &projectId, const QString &fileName );
-
     /**
      * Destroy the Delta File Wrapper object
      */

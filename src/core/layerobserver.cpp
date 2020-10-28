@@ -30,7 +30,10 @@
 LayerObserver::LayerObserver( const QgsProject *project )
   : mProject( project )
 {
-//  connect( mProject, &QgsProject::homePathChanged, this, &LayerObserver::onHomePathChanged );
+  mCurrentDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( true ) ) );
+  mCommittedDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( false ) ) );
+
+  connect( mProject, &QgsProject::homePathChanged, this, &LayerObserver::onHomePathChanged );
   connect( mProject, &QgsProject::layersAdded, this, &LayerObserver::onLayersAdded );
 }
 
@@ -63,7 +66,7 @@ bool LayerObserver::commit()
     return true;
 
   // Try to append the contents of the current delta file to the committed one. Very unlikely to break there.
-  if ( ! mCommittedDeltaFileWrapper->append( mCurrentDeltaFileWrapper ) )
+  if ( ! mCommittedDeltaFileWrapper->append( mCurrentDeltaFileWrapper.get() ) )
   {
     QgsLogger::warning( QStringLiteral( "Unable to append delta file wrapper contents!" ) );
     return false;
@@ -105,61 +108,39 @@ void LayerObserver::reset( bool isHardReset ) const
 
 DeltaFileWrapper *LayerObserver::currentDeltaFileWrapper() const
 {
-  return mCurrentDeltaFileWrapper;
-}
-
-
-void LayerObserver::setCurrentDeltaFileWrapper( DeltaFileWrapper *deltaFileWrapper )
-{
-  if ( mCurrentDeltaFileWrapper == deltaFileWrapper )
-    return;
-
-  mCurrentDeltaFileWrapper = deltaFileWrapper;
-
-  emit currentDeltaFileWrapperChanged();
+  return mCurrentDeltaFileWrapper.get();
 }
 
 
 DeltaFileWrapper *LayerObserver::committedDeltaFileWrapper() const
 {
-  return mCommittedDeltaFileWrapper;
+  return mCommittedDeltaFileWrapper.get();
 }
 
 
-void LayerObserver::setCommittedDeltaFileWrapper( DeltaFileWrapper *deltaFileWrapper )
+void LayerObserver::onHomePathChanged()
 {
-  if ( mCommittedDeltaFileWrapper == deltaFileWrapper )
+  if ( mProject->homePath().isNull() )
     return;
 
-  mCommittedDeltaFileWrapper = deltaFileWrapper;
+  Q_ASSERT( mCurrentDeltaFileWrapper->hasError() || ! mCurrentDeltaFileWrapper->isDirty() );
+  Q_ASSERT( mCommittedDeltaFileWrapper->hasError() || ! mCommittedDeltaFileWrapper->isDirty() );
 
+  // we should make deltas only on cloud projects
+  if ( QFieldCloudUtils::getProjectId( mProject ).isEmpty() )
+    return;
+
+  mCurrentDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( true ) ) );
+  mCommittedDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( false ) ) );
+
+  emit currentDeltaFileWrapperChanged();
   emit committedDeltaFileWrapperChanged();
+  addLayerListeners();
 }
-
-
-//void LayerObserver::onHomePathChanged()
-//{
-//  if ( mProject->homePath().isNull() )
-//    return;
-
-////  qDebug() << "111111111111";
-////  qDebug() << mCurrentDeltaFileWrapper->errorString();
-////  qDebug() << "111111111112" << mCommittedDeltaFileWrapper->errorString();
-
-////  Q_ASSERT( mCurrentDeltaFileWrapper->hasError() || ! mCurrentDeltaFileWrapper->isDirty() );
-////  Q_ASSERT( mCommittedDeltaFileWrapper->hasError() || ! mCommittedDeltaFileWrapper->isDirty() );
-
-////  // we should make deltas only on cloud projects
-////  if ( QFieldCloudUtils::getProjectId( mProject ).isEmpty() )
-////    return;
-
-////  addLayerListeners();
-//}
 
 
 void LayerObserver::onLayersAdded( const QList<QgsMapLayer *> &layers )
 {
-  qDebug() << 5555;
   Q_UNUSED( layers );
   addLayerListeners();
 }
@@ -330,7 +311,6 @@ void LayerObserver::onEditingStopped( )
 void LayerObserver::addLayerListeners()
 {
   const QList<QgsMapLayer *> layers = mProject->mapLayers().values();
-  qDebug() << 55551;
 
   // we should keep track only of the layers on cloud projects
   if ( QFieldCloudUtils::getProjectId( mProject ).isEmpty() )
@@ -342,8 +322,6 @@ void LayerObserver::addLayerListeners()
 
     if ( vl && vl->dataProvider() )
     {
-      qDebug() << 6666 << vl->name() << mCurrentDeltaFileWrapper;
-
       if ( !vl->readOnly() && QFieldCloudUtils::isCloudAction( vl ) )
       {
         // Ignore all layers that cannot determine a primary key column

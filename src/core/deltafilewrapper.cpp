@@ -42,23 +42,7 @@ Q_GLOBAL_STATIC( QSet<QString>, sFileLocks );
 
 
 DeltaFileWrapper::DeltaFileWrapper( const QgsProject *project, const QString &fileName )
-{
-  const QString projectId = mProject->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
-
-  DeltaFileWrapper( project, projectId, fileName );
-}
-
-DeltaFileWrapper::DeltaFileWrapper( const QString &projectId, const QString &fileName )
-{
-  QgsProject *project = QgsProject::instance();
-
-  DeltaFileWrapper( project, projectId, fileName );
-}
-
-
-DeltaFileWrapper::DeltaFileWrapper( const QgsProject *project, const QString &projectId, const QString &fileName )
   : mProject( project )
-  , mCloudProjectId( projectId )
 {
   QFileInfo fileInfo = QFileInfo( fileName );
 
@@ -70,6 +54,9 @@ DeltaFileWrapper::DeltaFileWrapper( const QgsProject *project, const QString &pr
 
   if ( mErrorType == DeltaFileWrapper::NoError && sFileLocks()->contains( mFileName ) )
     mErrorType = DeltaFileWrapper::LockError;
+
+  if ( mErrorType == DeltaFileWrapper::NoError )
+    mCloudProjectId = mProject->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
 
   if ( mErrorType == DeltaFileWrapper::NoError && mCloudProjectId.isEmpty() )
     mErrorType = DeltaFileWrapper::NotCloudProjectError;

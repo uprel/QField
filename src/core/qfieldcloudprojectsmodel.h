@@ -17,7 +17,6 @@
 #define QFIELDCLOUDPROJECTSMODEL_H
 
 #include "qgsnetworkaccessmanager.h"
-#include "deltafilewrapper.h"
 
 #include <QAbstractListModel>
 #include <QNetworkReply>
@@ -247,17 +246,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
       CloudProject() = default;
 
-      /**
-       * The current Deltas File Wrapper object
-       */
-      std::shared_ptr<DeltaFileWrapper> currentDeltas;
-
-
-      /**
-       * The commited Deltas File Wrapper object
-       */
-      std::shared_ptr<DeltaFileWrapper> committedDeltas;
-
       QString id;
       QString owner;
       QString name;
@@ -289,6 +277,9 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       int uploadAttachmentsFailed = 0;
       int uploadAttachmentsBytesTotal = 0;
       double uploadAttachmentsProgress = 0.0; // range from 0.0 to 1.0
+
+      int currentDeltasCount = 0;
+      int committedDeltasCount = 0;
     };
 
     inline QString layerFileName( const QgsMapLayer *layer ) const;

@@ -36,8 +36,8 @@ class LayerObserver : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY( DeltaFileWrapper *currentDeltaFileWrapper READ currentDeltaFileWrapper WRITE setCurrentDeltaFileWrapper NOTIFY currentDeltaFileWrapperChanged )
-    Q_PROPERTY( DeltaFileWrapper *committedDeltaFileWrapper READ committedDeltaFileWrapper WRITE setCommittedDeltaFileWrapper NOTIFY committedDeltaFileWrapperChanged )
+    Q_PROPERTY( DeltaFileWrapper *currentDeltaFileWrapper READ currentDeltaFileWrapper NOTIFY currentDeltaFileWrapperChanged )
+    Q_PROPERTY( DeltaFileWrapper *committedDeltaFileWrapper READ committedDeltaFileWrapper NOTIFY committedDeltaFileWrapperChanged )
 
   public:
     /**
@@ -85,7 +85,6 @@ class LayerObserver : public QObject
      * @return current delta file
      */
     DeltaFileWrapper *currentDeltaFileWrapper() const;
-    void setCurrentDeltaFileWrapper( DeltaFileWrapper *deltaFileWrapper );
 
 
     /**
@@ -94,14 +93,7 @@ class LayerObserver : public QObject
      * @return committed delta file
      */
     DeltaFileWrapper *committedDeltaFileWrapper() const;
-    void setCommittedDeltaFileWrapper( DeltaFileWrapper *deltaFileWrapper );
 
-
-    /**
-     * Add the needed event listeners to monitor for changes.
-     * Assigns listeners only for layer actions of `cloud` and `offline`.
-     */
-    void addLayerListeners();
 
   signals:
     void layerEdited( const QString &layerId );
@@ -123,7 +115,7 @@ class LayerObserver : public QObject
      * Commit the changes of the current delta file and
      *
      */
-//    void onHomePathChanged();
+    void onHomePathChanged();
 
 
     /**
@@ -178,13 +170,13 @@ class LayerObserver : public QObject
     /**
      * The current Deltas File Wrapper object
      */
-    DeltaFileWrapper *mCurrentDeltaFileWrapper;
+    std::unique_ptr<DeltaFileWrapper> mCurrentDeltaFileWrapper;
 
 
     /**
      * The commited Deltas File Wrapper object
      */
-    DeltaFileWrapper *mCommittedDeltaFileWrapper;
+    std::unique_ptr<DeltaFileWrapper> mCommittedDeltaFileWrapper;
 
 
     /**
@@ -207,6 +199,13 @@ class LayerObserver : public QObject
      * value  - patched feature IDs for that layer
      */
     QMap<QString, QgsFeatureIds> mPatchedFids;
+
+
+    /**
+     * Add the needed event listeners to monitor for changes.
+     * Assigns listeners only for layer actions of `cloud` and `offline`.
+     */
+    void addLayerListeners();
 
 };
 

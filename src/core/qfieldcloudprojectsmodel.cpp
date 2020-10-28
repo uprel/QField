@@ -48,7 +48,15 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
     const int index = findProject( mCurrentProjectId );
 
     if ( index == -1 || index >= mCloudProjects.size() )
+    {
+      mLayerObserver->setCurrentDeltaFileWrapper( nullptr );
+      mLayerObserver->setCommittedDeltaFileWrapper( nullptr );
       return;
+    }
+
+    mLayerObserver->setCurrentDeltaFileWrapper( mCloudProjects[index].currentDeltas.get() );
+    mLayerObserver->setCommittedDeltaFileWrapper( mCloudProjects[index].committedDeltas.get() );
+    mLayerObserver->addLayerListeners();
 
     refreshProjectModification( mCurrentProjectId );
 
@@ -1230,6 +1238,8 @@ void QFieldCloudProjectsModel::reload( const QJsonArray &remoteProjects )
     {
       cloudProject.checkout = LocalAndRemoteCheckout;
       cloudProject.localPath = QFieldCloudUtils::localProjectFilePath( cloudProject.id );
+      cloudProject.currentDeltas = std::shared_ptr<DeltaFileWrapper>( new DeltaFileWrapper( cloudProject.id, QStringLiteral( "%1/deltafile.json" ).arg( localPath.absolutePath() ) ) );
+      cloudProject.committedDeltas = std::shared_ptr<DeltaFileWrapper>( new DeltaFileWrapper( cloudProject.id, QStringLiteral( "%1/deltafile_commited.json" ).arg( localPath.absolutePath() ) ) );
     }
 
     mCloudProjects << cloudProject;
@@ -1255,7 +1265,10 @@ void QFieldCloudProjectsModel::reload( const QJsonArray &remoteProjects )
     const QString updatedAt = QSettings().value( QStringLiteral( "%1/updatedAt" ).arg( projectPrefix ) ).toString();
 
     CloudProject cloudProject( projectId, owner, name, description, QString(), LocalCheckout, ProjectStatus::Idle );
+    QDir localPath( QStringLiteral( "%1/%2" ).arg( QFieldCloudUtils::localCloudDirectory(), cloudProject.id ) );
     cloudProject.localPath = QFieldCloudUtils::localProjectFilePath( cloudProject.id );
+    cloudProject.currentDeltas = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( cloudProject.id, QStringLiteral( "%1/deltafile.json" ).arg( localPath.absolutePath() ) ) );
+    cloudProject.committedDeltas = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( cloudProject.id, QStringLiteral( "%1/deltafile_commited.json" ).arg( localPath.absolutePath() ) ) );
     mCloudProjects << cloudProject;
 
     Q_ASSERT( projectId == cloudProject.id );

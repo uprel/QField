@@ -42,7 +42,23 @@ Q_GLOBAL_STATIC( QSet<QString>, sFileLocks );
 
 
 DeltaFileWrapper::DeltaFileWrapper( const QgsProject *project, const QString &fileName )
+{
+  const QString projectId = mProject->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
+
+  DeltaFileWrapper( project, projectId, fileName );
+}
+
+DeltaFileWrapper::DeltaFileWrapper( const QString &projectId, const QString &fileName )
+{
+  QgsProject *project = QgsProject::instance();
+
+  DeltaFileWrapper( project, projectId, fileName );
+}
+
+
+DeltaFileWrapper::DeltaFileWrapper( const QgsProject *project, const QString &projectId, const QString &fileName )
   : mProject( project )
+  , mCloudProjectId( projectId )
 {
   QFileInfo fileInfo = QFileInfo( fileName );
 
@@ -54,9 +70,6 @@ DeltaFileWrapper::DeltaFileWrapper( const QgsProject *project, const QString &fi
 
   if ( mErrorType == DeltaFileWrapper::NoError && sFileLocks()->contains( mFileName ) )
     mErrorType = DeltaFileWrapper::LockError;
-
-  if ( mErrorType == DeltaFileWrapper::NoError )
-    mCloudProjectId = mProject->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
 
   if ( mErrorType == DeltaFileWrapper::NoError && mCloudProjectId.isEmpty() )
     mErrorType = DeltaFileWrapper::NotCloudProjectError;
@@ -302,24 +315,7 @@ QString DeltaFileWrapper::toFileForUpload( const QString &outFileName ) const
     QJsonArray resultDeltas;
     QJsonObject jsonRoot( mJsonRoot );
 
-    for ( QJsonValue deltaValue : constDeltas )
-    {
-        QJsonObject delta = deltaValue.toObject();
-        QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( mProject->mapLayer( delta["layerId"].toString() ) );
-
-        if ( layer )
-        {
-            // the same as QgsOfflineEdditing CUSTOM_PROPERTY_ORIGINAL_LAYERID
-            const QString remoteLayerId = layer->customProperty( QStringLiteral( "remoteLayerId" ) ).toString();
-
-            if ( !remoteLayerId.isEmpty() )
-              delta["layerId"] = remoteLayerId;
-        }
-
-        resultDeltas.append( delta );
-    }
-
-    jsonRoot.insert( QStringLiteral( "deltas" ), resultDeltas );
+    jsonRoot.insert( QStringLiteral( "deltas" ), deltas() );
     jsonRoot.insert( QStringLiteral( "files" ), QJsonArray() );
 
     QFile deltaFile( fileName );
@@ -355,11 +351,15 @@ bool DeltaFileWrapper::append( const DeltaFileWrapper *deltaFileWrapper )
 
 QStringList DeltaFileWrapper::attachmentFieldNames( const QgsProject *project, const QString &layerId )
 {
+  QStringList attachmentFieldNames;
+
+  if ( ! project )
+    return attachmentFieldNames;
+
   if ( sCacheAttachmentFieldNames()->contains( layerId ) )
     return sCacheAttachmentFieldNames()->value( layerId );
 
   const QgsVectorLayer *vl = static_cast<QgsVectorLayer *>( project->mapLayer( layerId ) );
-  QStringList attachmentFieldNames;
 
   if ( ! vl )
     return attachmentFieldNames;
@@ -452,16 +452,18 @@ QMap<QString, QString> DeltaFileWrapper::attachmentFileNames() const
 }
 
 
-void DeltaFileWrapper::addPatch( const QString &layerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature, const QgsFeature &newFeature )
+void DeltaFileWrapper::addPatch( const QString &localLayerId, const QString &sourceLayerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature, const QgsFeature &newFeature )
 {
   QJsonObject delta(
   {
-    {"fid", oldFeature.attribute( sourcePkAttrName ).toString()},
-    {"layerId", layerId},
+    {"localPk", oldFeature.attribute( localPkAttrName ).toString()},
+    {"localLayerId", localLayerId},
     {"method", "patch"},
-    {"tmpFid", oldFeature.attribute( localPkAttrName ).toString()},
+    {"sourcePk", oldFeature.attribute( sourcePkAttrName ).toString()},
+    {"sourceLayerId", sourceLayerId},
+    {"uuid", QUuid::createUuid().toString( QUuid::WithoutBraces )},
   } );
-  const QStringList attachmentFieldsList = attachmentFieldNames( mProject, layerId );
+  const QStringList attachmentFieldsList = attachmentFieldNames( mProject, localLayerId );
   const QgsGeometry oldGeom = oldFeature.geometry();
   const QgsGeometry newGeom = newFeature.geometry();
   const QgsAttributes oldAttrs = oldFeature.attributes();
@@ -556,15 +558,17 @@ void DeltaFileWrapper::addPatch( const QString &layerId, const QString &localPkA
 }
 
 
-void DeltaFileWrapper::addDelete( const QString &layerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature )
+void DeltaFileWrapper::addDelete( const QString &localLayerId, const QString &sourceLayerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature )
 {
   QJsonObject delta( {
-    {"fid", oldFeature.attribute( sourcePkAttrName ).toString()},
-    {"layerId", layerId},
+    {"localPk", oldFeature.attribute( localPkAttrName ).toString()},
+    {"localLayerId", localLayerId},
     {"method", "delete"},
-    {"tmpFid", oldFeature.attribute( localPkAttrName ).toString()},
+    {"sourcePk", oldFeature.attribute( sourcePkAttrName ).toString()},
+    {"sourceLayerId", sourceLayerId},
+    {"uuid", QUuid::createUuid().toString( QUuid::WithoutBraces )},
   } );
-  const QStringList attachmentFieldsList = attachmentFieldNames( mProject, layerId );
+  const QStringList attachmentFieldsList = attachmentFieldNames( mProject, localLayerId );
   const QgsAttributes oldAttrs = oldFeature.attributes();
   QJsonObject oldData( {{"geometry", geometryToJsonValue( oldFeature.geometry() )}} );
   QJsonObject tmpOldAttrs;
@@ -609,15 +613,17 @@ void DeltaFileWrapper::addDelete( const QString &layerId, const QString &localPk
 }
 
 
-void DeltaFileWrapper::addCreate( const QString &layerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &newFeature )
+void DeltaFileWrapper::addCreate(  const QString &localLayerId, const QString &sourceLayerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &newFeature )
 {
   QJsonObject delta( {
-    {"fid", newFeature.attribute( sourcePkAttrName ).toString()},
-    {"layerId", layerId},
+    {"localPk", newFeature.attribute( localPkAttrName ).toString()},
+    {"localLayerId", localLayerId},
     {"method", "create"},
-    {"tmpFid", newFeature.attribute( localPkAttrName ).toString()},
+    {"sourcePk", newFeature.attribute( sourcePkAttrName ).toString()},
+    {"sourceLayerId", sourceLayerId},
+    {"uuid", QUuid::createUuid().toString( QUuid::WithoutBraces )},
   } );
-  const QStringList attachmentFieldsList = attachmentFieldNames( mProject, layerId );
+  const QStringList attachmentFieldsList = attachmentFieldNames( mProject, localLayerId );
   const QgsAttributes newAttrs = newFeature.attributes();
   QJsonObject newData( {{"geometry", geometryToJsonValue( newFeature.geometry() )}} );
   QJsonObject tmpNewAttrs;
@@ -931,4 +937,9 @@ QPair<int, QString> DeltaFileWrapper::getSourcePkAttribute( const QgsVectorLayer
     return QPair<int, QString>( -1, QString() );
 
   return QPair<int, QString>( pkAttrIdx, pkAttrName );
+}
+
+QString DeltaFileWrapper::getSourceLayerId( const QgsVectorLayer *vl )
+{
+  return vl ? vl->customProperty( QStringLiteral( "remoteLayerId" ) ).toString() : QString();
 }

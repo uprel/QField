@@ -1384,6 +1384,9 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
 
   mCloudProjects[index].modification ^= LocalModification;
 
+  dfwCurrent->reset();
+  dfwCurrent->resetId();
+
   dfwCommitted->reset();
   dfwCommitted->resetId();
 

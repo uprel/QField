@@ -872,6 +872,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     else
     {
       mCloudProjects[index].status = ProjectStatus::Idle;
+      mCloudProjects[index].modification ^= LocalModification;
 
       deltaFile->reset();
       deltaFile->resetId();
@@ -1348,6 +1349,7 @@ bool QFieldCloudProjectsModel::revertLocalChangesFromCurrentProject()
     return false;
   }
 
+  mCloudProjects[index].modification ^= LocalModification;
 
   dfw->reset();
   dfw->resetId();
@@ -1374,6 +1376,8 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
 
   if ( ! mLayerObserver->commit() )
     QgsMessageLog::logMessage( QStringLiteral( "Failed to commit" ) );
+
+  mCloudProjects[index].modification ^= LocalModification;
 
   dfwCommitted->reset();
   dfwCommitted->resetId();

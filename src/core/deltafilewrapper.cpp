@@ -566,7 +566,7 @@ void DeltaFileWrapper::addDelete( const QString &localLayerId, const QString &so
   {
     const QVariant oldVal = oldAttrs.at( idx );
     const QString name = oldFeature.fields().at( idx ).name();
-    tmpOldAttrs.insert( name, QJsonValue::fromVariant( oldVal ) );
+    tmpOldAttrs.insert( name, oldVal.isNull() ? QJsonValue::Null : QJsonValue::fromVariant( oldVal ) );
 
     if ( attachmentFieldsList.contains( name ) && ! oldVal.isNull() )
     {

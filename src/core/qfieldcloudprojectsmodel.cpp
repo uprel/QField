@@ -795,10 +795,15 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   const QStringList attachmentFileNames = deltaFile->attachmentFileNames().keys();
   for ( const QString &fileName : attachmentFileNames )
   {
-    const int fileSize = QFileInfo( fileName ).size();
+    QFileInfo fileInfo( fileName );
 
-    Q_ASSERT( ! fileName.isEmpty() );
-//    Q_ASSERT( fileSize > 0 );
+    if ( !fileInfo.exists() )
+    {
+      QgsLogger::warning( QStringLiteral( "Attachment file '%1' does not exist" ).arg( fileName ) );
+      continue;
+    }
+
+    const int fileSize = fileInfo.size();
 
     // ? should we also check the checksums of the files being uploaded? they are available at deltaFile->attachmentFileNames()->values()
 

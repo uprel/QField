@@ -229,6 +229,20 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
   mMapCanvas = rootObjects().first()->findChild<QgsQuickMapCanvasMap *>();
   mMapCanvas->mapSettings()->setProject( mProject );
 
+  QFieldCloudProjectsModel *qFieldCloudProjectsModel = rootObjects().first()->findChild<QFieldCloudProjectsModel *>();
+
+  connect( qFieldCloudProjectsModel, &QFieldCloudProjectsModel::projectDownloaded, this, [ = ] ( const QString &projectId, const bool hasError, const QString &projectName )
+  {
+    Q_UNUSED( projectName );
+    if ( ! hasError )
+    {
+      if ( projectId == QFieldCloudUtils::getProjectId( mProject ) )
+      {
+        reloadProjectFile( mProject->fileName() );
+      }
+    }
+  } );
+
   mFlatLayerTree->layerTreeModel()->setLegendMapViewData( mMapCanvas->mapSettings()->mapSettings().mapUnitsPerPixel(),
       static_cast< int >( std::round( mMapCanvas->mapSettings()->outputDpi() ) ), mMapCanvas->mapSettings()->mapSettings().scale() );
 

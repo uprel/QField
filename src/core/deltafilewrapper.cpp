@@ -420,7 +420,8 @@ QMap<QString, QString> DeltaFileWrapper::attachmentFileNames() const
         }
       }
     }
-    else
+
+    if ( method != QStringLiteral( "create" ) && method != QStringLiteral( "delete" ) && method != QStringLiteral( "patch" ) )
     {
       QgsLogger::debug( QStringLiteral( "File `%1` contains unknown method `%2`" ).arg( mFileName, method ) );
       Q_ASSERT( 0 );

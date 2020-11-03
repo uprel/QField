@@ -932,6 +932,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         if ( ! deltaFile->toFile() )
           QgsLogger::warning( QStringLiteral( "Failed to reset delta file. %1" ).arg( deltaFile->errorString() ) );
 
+        mCloudProjects[index].status = ProjectStatus::Idle;
         mCloudProjects[index].modification ^= LocalModification;
         mCloudProjects[index].modification |= RemoteModification;
 
@@ -944,7 +945,6 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         }
         else
         {
-          mCloudProjects[index].status = ProjectStatus::Idle;
           QModelIndex idx = createIndex( index, 0 );
           emit dataChanged( idx, idx, QVector<int>() << StatusRole );
 

@@ -873,6 +873,12 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     {
       mCloudProjects[index].status = ProjectStatus::Idle;
 
+      deltaFile->reset();
+      deltaFile->resetId();
+
+      if ( ! deltaFile->toFile() )
+        QgsLogger::warning( QStringLiteral( "Failed to reset delta file after delta push. %1" ).arg( deltaFile->errorString() ) );
+
       QModelIndex idx = createIndex( index, 0 );
 
       emit dataChanged( idx, idx, QVector<int>() << StatusRole );

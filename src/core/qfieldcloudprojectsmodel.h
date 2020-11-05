@@ -17,6 +17,7 @@
 #define QFIELDCLOUDPROJECTSMODEL_H
 
 #include "qgsnetworkaccessmanager.h"
+#include "qgsgpkgflusher.h"
 
 #include <QAbstractListModel>
 #include <QNetworkReply>
@@ -28,6 +29,7 @@ class QFieldCloudConnection;
 class NetworkReply;
 class LayerObserver;
 class QgsMapLayer;
+class QgsProject;
 
 
 class QFieldCloudProjectsModel : public QAbstractListModel
@@ -142,9 +144,12 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     Q_PROPERTY( bool canCommitCurrentProject READ canCommitCurrentProject NOTIFY canCommitCurrentProjectChanged )
     // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
     Q_PROPERTY( bool canSyncCurrentProject READ canSyncCurrentProject NOTIFY canSyncCurrentProjectChanged )
+    Q_PROPERTY( QgsGpkgFlusher *gpkgFlusher WRITE setGpkgFlusher NOTIFY gpkgFlusherChanged )
 
     QString currentProjectId() const;
     void setCurrentProjectId( const QString &currentProjectId );
+
+    void setGpkgFlusher( QgsGpkgFlusher *flusher );
 
     QVariantMap currentProjectData() const;
 
@@ -180,6 +185,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void currentProjectChangesCountChanged();
     void canCommitCurrentProjectChanged();
     void canSyncCurrentProjectChanged();
+    void gpkgFlusherChanged();
     void warning( const QString &message );
     void projectDownloaded( const QString &projectId, const bool hasError, const QString &projectName );
     void projectStatusChanged( const QString &projectId, const ProjectStatus &projectStatus );
@@ -290,6 +296,8 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     QString mCurrentProjectId;
     int mCurrentProjectChangesCount = 0;
     LayerObserver *mLayerObserver = nullptr;
+    QgsProject *mProject = nullptr;
+    QgsGpkgFlusher *mGpkgFlusher = nullptr;
 
     bool mCanCommitCurrentProject = false;
     bool mCanSyncCurrentProject = false;

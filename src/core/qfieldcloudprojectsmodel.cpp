@@ -37,7 +37,8 @@
 #include <QSettings>
 #include <QDebug>
 
-QFieldCloudProjectsModel::QFieldCloudProjectsModel()
+QFieldCloudProjectsModel::QFieldCloudProjectsModel() :
+  mProject( QgsProject::instance() )
 {
   QJsonArray projects;
   reload( projects );
@@ -658,9 +659,16 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       {
         if ( ! hasError )
         {
+          QString projectFileName = mProject->fileName();
+          mProject->setFileName( "" );
+          mGpkgFlusher->stop();
+
           // move the files from their temporary location to their permanent one
           if ( ! projectMoveDownloadedFilesToPermanentStorage( projectId ) )
             mCloudProjects[index].errorStatus = DownloadErrorStatus;
+
+          mGpkgFlusher->start();
+          mProject->setFileName( projectFileName );
         }
 
         for ( const QString &fileName : fileNames )
@@ -1398,4 +1406,14 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
     return false;
 
   return true;
+}
+
+void QFieldCloudProjectsModel::setGpkgFlusher( QgsGpkgFlusher *flusher )
+{
+  if ( mGpkgFlusher == flusher )
+    return;
+
+  mGpkgFlusher = flusher;
+
+  emit gpkgFlusherChanged();
 }

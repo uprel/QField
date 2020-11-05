@@ -76,6 +76,7 @@ ApplicationWindow {
   //currentRubberband provides the rubberband depending on the current state (digitize or measure)
   property Rubberband currentRubberband
   property LayerObserver layerObserverAlias: layerObserver
+  property QgsGpkgFlusher gpkgFlusherAlias: gpkgFlusher
 
   signal closeMeasureTool()
   signal changeMode( string mode )
@@ -1600,6 +1601,7 @@ ApplicationWindow {
     id: cloudProjectsModel
     cloudConnection: cloudConnection
     layerObserver: layerObserverAlias
+    gpkgFlusher: gpkgFlusherAlias
 
     onProjectDownloaded: function ( projectId, hasError, projectName ) {
       return hasError

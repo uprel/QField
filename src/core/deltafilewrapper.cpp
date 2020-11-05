@@ -173,6 +173,7 @@ void DeltaFileWrapper::reset()
 
   mIsDirty = true;
   mDeltas = QJsonArray();
+  mLocalPkDeltaIdx.clear();
 
   emit countChanged();
 }
@@ -451,6 +452,7 @@ void DeltaFileWrapper::addPatch( const QString &localLayerId, const QString &sou
     {"sourceLayerId", sourceLayerId},
     {"uuid", QUuid::createUuid().toString( QUuid::WithoutBraces )},
   } );
+
   const QStringList attachmentFieldsList = attachmentFieldNames( mProject, localLayerId );
   const QgsGeometry oldGeom = oldFeature.geometry();
   const QgsGeometry newGeom = newFeature.geometry();
@@ -539,10 +541,44 @@ void DeltaFileWrapper::addPatch( const QString &localLayerId, const QString &sou
   delta.insert( QStringLiteral( "old" ), oldData );
   delta.insert( QStringLiteral( "new" ), newData );
 
-  mDeltas.append( delta );
   mIsDirty = true;
 
-  emit countChanged();
+  QMap<QString, int> layerPkDeltaIdx = mLocalPkDeltaIdx.value( localLayerId );
+  QString localPk = delta.value( QStringLiteral( "localPk" ) ).toString();
+
+  if ( layerPkDeltaIdx.contains( localPk ) )
+  {
+    int deltaIdx = layerPkDeltaIdx.take( localPk );
+    QJsonObject deltaCreate = mDeltas.at( deltaIdx ).toObject();
+    QJsonObject newCreate = deltaCreate.value( QStringLiteral( "new" ) ).toObject();
+    QJsonObject attributesCreate = newCreate.value( QStringLiteral( "attributes" ) ).toObject();
+
+    if ( ! newData.value( QStringLiteral( "geometry" ) ).isUndefined() )
+    {
+      newCreate.insert( QStringLiteral( "geometry" ), newData.value( QStringLiteral( "geometry" ) ) );
+    }
+
+    const QStringList attributeNames = tmpNewAttrs.keys();
+    for ( const QString &attributeName : attributeNames )
+    {
+      attributesCreate.insert( attributeName, tmpNewAttrs.value( attributeName ) );
+    }
+
+    newCreate.insert( QStringLiteral( "attributes" ), geometryToJsonValue( newGeom ) );
+    newCreate.insert( QStringLiteral( "attributes" ), attributesCreate );
+    deltaCreate.insert( QStringLiteral( "new" ), newCreate );
+    deltaCreate.insert( QStringLiteral( "sourcePk" ), delta.value( QStringLiteral( "sourcePk" ) ) );
+
+    mDeltas.replace( deltaIdx, deltaCreate );
+
+    return;
+  }
+  else
+  {
+    mDeltas.append( delta );
+
+    emit countChanged();
+  }
 }
 
 
@@ -556,6 +592,19 @@ void DeltaFileWrapper::addDelete( const QString &localLayerId, const QString &so
     {"sourceLayerId", sourceLayerId},
     {"uuid", QUuid::createUuid().toString( QUuid::WithoutBraces )},
   } );
+
+  QMap<QString, int> layerPkDeltaIdx = mLocalPkDeltaIdx.value( localLayerId );
+  QString localPk = delta.value( QStringLiteral( "localPk" ) ).toString();
+
+  if ( layerPkDeltaIdx.contains( localPk ) )
+  {
+    mDeltas.removeAt( layerPkDeltaIdx.take( localPk ) );
+
+    emit countChanged();
+
+    return;
+  }
+
   const QStringList attachmentFieldsList = attachmentFieldNames( mProject, localLayerId );
   const QgsAttributes oldAttrs = oldFeature.attributes();
   QJsonObject oldData( {{"geometry", geometryToJsonValue( oldFeature.geometry() )}} );
@@ -648,6 +697,9 @@ void DeltaFileWrapper::addCreate(  const QString &localLayerId, const QString &s
   }
 
   delta.insert( QStringLiteral( "new" ), newData );
+
+  QString localPk = delta.value( QStringLiteral( "localPk" ) ).toString();
+  mLocalPkDeltaIdx[localLayerId][localPk] = mDeltas.count();
 
   mDeltas.append( delta );
   mIsDirty = true;

@@ -355,6 +355,11 @@ class DeltaFileWrapper : public QObject
 
 
     /**
+     * A mapping between the local primary key and it's index in the delta file.
+     */
+    QMap<QString, QMap<QString, int>> mLocalPkDeltaIdx;
+
+    /**
      * The list of JSON deltas.
      */
     QJsonArray mDeltas;

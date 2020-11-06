@@ -660,15 +660,23 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       {
         if ( ! hasError )
         {
+          const QStringList unprefixedGpkgFileNames = filterGpkgFileNames( mCloudProjects[index].downloadFileTransfers.keys() );
+          const QStringList gpkgFileNames = projectFileNames( mProject->homePath(), unprefixedGpkgFileNames );
           QString projectFileName = mProject->fileName();
-          mProject->setFileName( "" );
-          mGpkgFlusher->stop();
+          mProject->setFileName( QStringLiteral( "" ) );
+
+          for ( const QString &fileName : gpkgFileNames )
+            mGpkgFlusher->stop( fileName );
 
           // move the files from their temporary location to their permanent one
           if ( ! projectMoveDownloadedFilesToPermanentStorage( projectId ) )
             mCloudProjects[index].errorStatus = DownloadErrorStatus;
 
-          mGpkgFlusher->start();
+          deleteGpkgShmAndWal( gpkgFileNames );
+
+          for ( const QString &fileName : gpkgFileNames )
+            mGpkgFlusher->start( fileName );
+
           mProject->setFileName( projectFileName );
         }
 
@@ -1417,4 +1425,62 @@ void QFieldCloudProjectsModel::setGpkgFlusher( QgsGpkgFlusher *flusher )
   mGpkgFlusher = flusher;
 
   emit gpkgFlusherChanged();
+}
+
+bool QFieldCloudProjectsModel::deleteGpkgShmAndWal( const QStringList &gpkgFileNames )
+{
+  bool isSuccess = true;
+
+  for ( const QString &fileName : gpkgFileNames )
+  {
+    QFile shmFile( QStringLiteral( "%1-shm" ).arg( fileName ) );
+    if ( shmFile.exists() )
+    {
+      if ( ! shmFile.remove() )
+      {
+        QgsLogger::warning( QStringLiteral( "Failed to remove -shm file '%1' " ).arg( shmFile.fileName() ) );
+        isSuccess = false;
+      }
+    }
+
+    QFile walFile( QStringLiteral( "%1-wal" ).arg( fileName ) );
+
+    if ( walFile.exists() )
+    {
+      if ( ! walFile.remove() )
+      {
+        QgsLogger::warning( QStringLiteral( "Failed to remove -wal file '%1' " ).arg( walFile.fileName() ) );
+        isSuccess = false;
+      }
+    }
+  }
+
+  return isSuccess;
+}
+
+QStringList QFieldCloudProjectsModel::filterGpkgFileNames( const QStringList &fileNames ) const
+{
+  QStringList gpkgFileNames;
+
+  for ( const QString &fileName : fileNames )
+  {
+    if ( fileName.endsWith( QStringLiteral( ".gpkg" ) ) )
+    {
+      gpkgFileNames.append( fileName );
+    }
+  }
+
+  return gpkgFileNames;
+}
+
+QStringList QFieldCloudProjectsModel::projectFileNames( const QString &projectPath, const QStringList &fileNames ) const
+{
+  QStringList prefixedFileNames;
+
+  for ( const QString &fileName : fileNames )
+  {
+    prefixedFileNames.append( QStringLiteral( "%1/%2" ).arg( projectPath, fileName ) );
+  }
+
+  return prefixedFileNames;
 }

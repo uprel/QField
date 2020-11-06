@@ -317,6 +317,10 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void updateCanCommitCurrentProject();
     void updateCanSyncCurrentProject();
     void updateCurrentProjectChangesCount();
+
+    bool deleteGpkgShmAndWal( const QStringList &gpkgFileNames );
+    QStringList projectFileNames( const QString &projectPath, const QStringList &fileNames ) const;
+    QStringList filterGpkgFileNames( const QStringList &fileNames ) const;
 };
 
 Q_DECLARE_METATYPE( QFieldCloudProjectsModel::ProjectStatus )

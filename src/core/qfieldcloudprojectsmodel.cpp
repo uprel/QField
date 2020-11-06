@@ -77,6 +77,7 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel() :
   connect( this, &QFieldCloudProjectsModel::dataChanged, this, [ = ]( const QModelIndex & topLeft, const QModelIndex & bottomRight, const QVector<int> &roles )
   {
     Q_UNUSED( bottomRight );
+    Q_UNUSED( roles );
 
     const int index = findProject( mCurrentProjectId );
 

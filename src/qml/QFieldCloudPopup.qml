@@ -143,10 +143,17 @@ Popup {
                    cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading
           font: Theme.defaultFont
           text: switch(cloudProjectsModel.currentProjectData.Status ) {
-                  case QFieldCloudProjectsModel.Downloading: qsTr('Downloading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.DownloadProgress * 100) ); break;
-                  case QFieldCloudProjectsModel.Uploading: qsTr('Uploading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.UploadProgress * 100) ); break;
+                  case QFieldCloudProjectsModel.Downloading:
+                    switch ( cloudProjectsModel.currentProjectData.DownloadJobStatus ) {
+                      case QFieldCloudProjectsModel.DownloadJobCreatedStatus:
+                        return qsTr('Downloading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.DownloadProgress * 100) )
+                      default:
+                        return qsTr('QFieldCloud packaging…')
+                    }
+                  case QFieldCloudProjectsModel.Uploading: return qsTr('Uploading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.UploadProgress * 100) );
                   default: '';
                 }
+
           wrapMode: Text.WordWrap
           horizontalAlignment: Text.AlignHCenter
           Layout.fillWidth: true
@@ -167,8 +174,14 @@ Popup {
             fillMode: Image.PreserveAspectFit
             smooth: true
             source: switch(cloudProjectsModel.currentProjectData.Status ) {
-                    case QFieldCloudProjectsModel.Downloading: Theme.getThemeVectorIcon('ic_cloud_download_24dp'); break;
-                    case QFieldCloudProjectsModel.Uploading: Theme.getThemeVectorIcon('ic_cloud_upload_24dp'); break;
+                    case QFieldCloudProjectsModel.Downloading:
+                      switch ( cloudProjectsModel.currentProjectData.DownloadJobStatus ) {
+                        case QFieldCloudProjectsModel.DownloadJobCreatedStatus:
+                          return Theme.getThemeVectorIcon('ic_cloud_download_24dp');
+                        default:
+                          return Theme.getThemeVectorIcon('ic_cloud_active_24dp');
+                      }
+                    case QFieldCloudProjectsModel.Uploading: return Theme.getThemeVectorIcon('ic_cloud_upload_24dp');
                     default: '';
                   }
             width: parent.width

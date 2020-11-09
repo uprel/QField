@@ -50,6 +50,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       ErrorStatusRole,
       ErrorStringRole,
       DownloadProgressRole,
+      DownloadJobStatusRole,
       UploadProgressRole,
       LocalPathRole
     };
@@ -73,6 +74,15 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     };
 
     Q_ENUM( ProjectErrorStatus )
+
+    enum ProjectServerStatus
+    {
+      IdleServerStatus,
+      ApplyingDeltasServerStatus,
+      ExportingProjectServerStatus,
+    };
+
+    Q_ENUM( ProjectServerStatus )
 
     enum ProjectCheckout
     {
@@ -262,6 +272,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       ProjectErrorStatus errorStatus = ProjectErrorStatus::NoErrorStatus;
       ProjectCheckouts checkout;
       ProjectModifications modification = ProjectModification::NoModification;
+      ProjectServerStatus serverStatus = ProjectServerStatus::IdleServerStatus;
       QString localPath;
 
       QString deltaFileId;

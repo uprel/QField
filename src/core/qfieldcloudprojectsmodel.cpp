@@ -428,6 +428,8 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
     // TODO probably better idea to get the status from downloadJson body
     mCloudProjects[index].downloadJobStatus = DownloadJobPendingStatus;
 
+    emit dataChanged( idx, idx, QVector<int>() << DownloadJobStatusRole );
+
     projectGetDownloadStatus( projectId );
   } );
 
@@ -504,6 +506,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
       // TODO this is oversimplification. e.g. 404 error is when the requested export id is not existent
       mCloudProjects[index].downloadJobStatusString = QStringLiteral( "[HTTP%1] Networking error, please retry!" ).arg( statusCode );
 
+      emit dataChanged( idx, idx, QVector<int>() << DownloadJobStatusRole );
       emit networkDownloadStatusChecked( projectId );
 
       return;
@@ -543,7 +546,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
       mCloudProjects[index].downloadJobStatus = DownloadJobErrorStatus;
       mCloudProjects[index].downloadJobStatusString = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
 
-      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadErrorStatus );
+      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadJobStatusRole << DownloadErrorStatus );
     }
     else
     {
@@ -552,7 +555,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
       mCloudProjects[index].downloadJobStatus = DownloadJobErrorStatus;
       mCloudProjects[index].downloadJobStatusString = QStringLiteral( "Unknown status \"%1\"" ).arg( status );
 
-      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadErrorStatus );
+      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadJobStatusRole << DownloadErrorStatus );
     }
 
     emit networkDownloadStatusChecked( projectId );
@@ -1227,6 +1230,7 @@ QHash<int, QByteArray> QFieldCloudProjectsModel::roleNames() const
   roles[ErrorStatusRole] = "ErrorStatus";
   roles[ErrorStringRole] = "ErrorString";
   roles[DownloadProgressRole] = "DownloadProgress";
+  roles[DownloadJobStatusRole] = "DownloadJobStatus";
   roles[UploadProgressRole] = "UploadProgress";
   roles[LocalPathRole] = "LocalPath";
   return roles;
@@ -1338,8 +1342,10 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
           : mCloudProjects.at( index.row() ).errorStatus == UploadErrorStatus
             ? mCloudProjects.at( index.row() ).deltaFileUploadStatusString
             : QString();
+    case DownloadJobStatusRole:
+      return mCloudProjects.at( index.row() ).downloadJobStatus;
     case DownloadProgressRole:
-      return mCloudProjects.at( index.row() ).downloadProgress;
+    return mCloudProjects.at( index.row() ).downloadProgress;
     case UploadProgressRole:
       // when we start syncing also the photos, it would make sense to go there
       return 0.5 + 0.5 * (mCloudProjects.at( index.row() ).uploadAttachmentsProgress);

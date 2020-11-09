@@ -1232,6 +1232,7 @@ QHash<int, QByteArray> QFieldCloudProjectsModel::roleNames() const
   roles[DownloadProgressRole] = "DownloadProgress";
   roles[DownloadJobStatusRole] = "DownloadJobStatus";
   roles[UploadProgressRole] = "UploadProgress";
+  roles[LocalDeltasCountRole] = "LocalDeltasCount";
   roles[LocalPathRole] = "LocalPath";
   return roles;
 }
@@ -1349,6 +1350,8 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
     case UploadProgressRole:
       // when we start syncing also the photos, it would make sense to go there
       return 0.5 + 0.5 * (mCloudProjects.at( index.row() ).uploadAttachmentsProgress);
+    case LocalDeltasCountRole:
+      return mCloudProjects.at( index.row() ).currentDeltasCount + mCloudProjects.at( index.row() ).committedDeltasCount;
     case LocalPathRole:
       return mCloudProjects.at( index.row() ).localPath;
   }

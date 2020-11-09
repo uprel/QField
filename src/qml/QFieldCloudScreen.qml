@@ -262,7 +262,9 @@ Page {
                                     }
                                   }
 
-                                  return '%1 (%2)'.arg(Description).arg(status)
+                                  var localChanges = ( LocalDeltasCount > 0 ) ? qsTr('Has changes. ') : ''
+
+                                  return '%1 (%2%3)'.arg(Description).arg(localChanges).arg(status)
                                 }
                               }
                               visible: text != ""

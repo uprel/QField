@@ -52,6 +52,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       DownloadProgressRole,
       DownloadJobStatusRole,
       UploadProgressRole,
+      LocalDeltasCountRole,
       LocalPathRole
     };
 

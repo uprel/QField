@@ -58,8 +58,10 @@ DeltaFileWrapper::DeltaFileWrapper( const QgsProject *project, const QString &fi
   if ( mErrorType == DeltaFileWrapper::NoError )
     mCloudProjectId = mProject->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
 
-  if ( mErrorType == DeltaFileWrapper::NoError && mCloudProjectId.isEmpty() )
-    mErrorType = DeltaFileWrapper::NotCloudProjectError;
+  // TODO if the cloud project id is obtained from the filesystem (e.g. parent dir is the ProjectId), this check can be removed.
+  if ( ! mProject->homePath().isEmpty() )
+    if ( mErrorType == DeltaFileWrapper::NoError && mCloudProjectId.isEmpty() )
+      mErrorType = DeltaFileWrapper::NotCloudProjectError;
 
   QFile deltaFile( mFileName );
 

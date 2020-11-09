@@ -85,7 +85,7 @@ Page {
       TabBar {
         id: tabRow
         visible: model.hasTabs
-        height: 48
+        height: form.model.hasTabs ? 48 : 0
 
         Connections {
           target: master
@@ -108,10 +108,11 @@ Page {
 
           TabButton {
             id: tabButton
+            property bool isCurrentIndex: index == tabRow.currentIndex
             text: Name
             topPadding: 0
             bottomPadding: 0
-            leftPadding: 8
+            leftPadding: !ConstraintHardValid || !ConstraintSoftValid ? 22 : 8
             rightPadding: 8
 
             width: contentItem.width + leftPadding + rightPadding
@@ -121,6 +122,17 @@ Page {
               implicitWidth: parent.width
               implicitHeight: parent.height
               color: "transparent"
+
+              Rectangle {
+                anchors.left: parent.left
+                anchors.leftMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+                width: 10
+                height: 10
+                radius: 5
+                color: !ConstraintHardValid ? Theme.errorColor : Theme.warningColor
+                visible: !ConstraintHardValid || !ConstraintSoftValid
+              }
             }
 
             contentItem: Text {
@@ -129,10 +141,8 @@ Page {
               width: paintedWidth
               height: parent.height
               text: tabButton.text
-              // color: tabButton.down ? '#17a81a' : '#21be2b'
-              color: !tabButton.enabled ? '#999999' : tabButton.down ||
-                                        tabButton.checked ? '#1B5E20' : '#4CAF50'
-              font.weight: tabButton.checked ? Font.DemiBold : Font.Normal
+              color: !tabButton.enabled ? Theme.darkGray : tabButton.down ? Qt.darker(Theme.mainColor,1.5) : Theme.mainColor
+              font.weight: isCurrentIndex ? Font.DemiBold : Font.Normal
 
               horizontalAlignment: Text.AlignHCenter
               verticalAlignment: Text.AlignVCenter
@@ -142,72 +152,75 @@ Page {
       }
     }
 
-    SwipeView {
-      id: swipeView
-      currentIndex: tabRow.currentIndex
+    Rectangle {
       anchors {
         top: flickable.bottom
         left: parent.left
         right: parent.right
         bottom: parent.bottom
       }
+      color: "white"
 
-      Repeater {
-        // One page per tab in tabbed forms, 1 page in auto forms
-        model: form.model.hasTabs ? form.model : 1
+      SwipeView {
+        id: swipeView
+        anchors.fill: parent
+        currentIndex: tabRow.currentIndex
 
-        Item {
-          id: formPage
-          property int currentIndex: index
+        Repeater {
+          // One page per tab in tabbed forms, 1 page in auto forms
+          model: form.model.hasTabs ? form.model : 1
 
-          Rectangle {
-            anchors.fill: formPage
-            color: "white"
-          }
+          Item {
+            id: formPage
+            property int currentIndex: index
 
-          /**
-           * The main form content area
-           */
-          ListView {
-            id: content
-            anchors.fill: parent
-            clip: true
-            section.property: 'Group'
-            section.labelPositioning: ViewSection.CurrentLabelAtStart | ViewSection.InlineLabels
-            section.delegate: Component {
-              // section header: group box name
-              Rectangle {
-                width: parent.width
-                height: section === "" ? 0 : 30
-                color: 'lightGray'
-
-                Text {
-                  anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter }
+            /**
+            * The main form content area
+            */
+            ListView {
+              id: content
+              anchors.fill: parent
+              clip: true
+              section.property: 'Group'
+              section.labelPositioning: ViewSection.CurrentLabelAtStart | ViewSection.InlineLabels
+              section.delegate: Component {
+                // section header: group box name
+                Rectangle {
                   width: parent.width
-                  font.bold: true
-                  text: section
-                  wrapMode: Text.WordWrap
+                  height: section === "" ? 0 : childrenRect.height + 10
+                  color: 'lightGray'
+
+                  Text {
+                    anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter; }
+                    leftPadding: 10
+                    rightPadding: 10
+                    width: parent.width
+                    font.pointSize: 12
+                    font.bold: true
+                    text: section
+                    wrapMode: Text.WordWrap
+                  }
                 }
               }
-            }
 
-            Connections {
-              target: master
+              Connections {
+                target: master
 
-              function onReset() {
-                content.contentY = 0
+                function onReset() {
+                  content.contentY = 0
+                }
               }
+
+              SubModel {
+                id: contentModel
+                model: form.model
+                rootIndex: form.model.index(currentIndex, 0)
+              }
+
+              model: form.model.hasTabs ? contentModel : form.model
+
+              delegate: fieldItem
             }
-
-            SubModel {
-              id: contentModel
-              model: form.model
-              rootIndex: form.model.index(currentIndex, 0)
-            }
-
-            model: form.model.hasTabs ? contentModel : form.model
-
-            delegate: fieldItem
           }
         }
       }
@@ -289,9 +302,8 @@ Page {
           color: 'grey'
         }
 
-        WebView {
+        /* WebView {
           id: htmlItem
-          visible: TabIndex === form.currentTab && ( form.focus || featureForm.focus )
           anchors {
             left: parent.left
             rightMargin: 12
@@ -302,11 +314,26 @@ Page {
             if ( !loading )
               runJavaScript("document.body.offsetHeight", function(result) { htmlItem.height = ( result + 20 ) } );
           }
+        }*/
+
+        Item {
+            id: htmlLoader
+            visible: TabIndex === form.currentTab && ( form.focus || featureForm.focus )
+            anchors {
+              left: parent.left
+              rightMargin: 12
+              right: parent.right
+              top: htmlLabel.bottom
+            }
         }
 
         onHtmlCodeChanged: {
           if ( visible )
+          {
+            var htmlItem = Qt.createQmlObject('import QtWebView 1.14; WebView { id: htmlItem; anchors { left: parent.left; rightMargin: 12; right: parent.right; } onLoadingChanged: if ( !loading ) runJavaScript("document.body.offsetHeight", function(result) { htmlItem.height = ( result + 30 ) } ); }',
+                                              htmlLoader);
             htmlItem.loadHtml(htmlContainer.htmlCode);
+          }
         }
       }
 
@@ -326,6 +353,7 @@ Page {
           wrapMode: Text.WordWrap
           font.pointSize: 12
           font.bold: true
+          topPadding: 10
           bottomPadding: 5
           color: ConstraintHardValid ? form.state === 'ReadOnly' || embedded && EditorWidget === 'RelationEditor' ? 'grey' : ConstraintSoftValid ? 'black' : Theme.warningColor : Theme.errorColor
         }
@@ -590,8 +618,6 @@ Page {
 
       Label {
         id: titleLabel
-        leftPadding: model.constraintsHardValid ? 0 : 48
-
         text:
         {
           var currentLayer = model.featureModel.currentLayer

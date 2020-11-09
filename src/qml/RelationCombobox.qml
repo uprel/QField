@@ -29,6 +29,8 @@ Item {
     comboBox.currentIndex = featureListModel.findKey(currentKeyValue)
   }
 
+  property EmbeddedFeatureForm embeddedFeatureForm: embeddedPopup
+
   height: childrenRect.height + 10
 
   RowLayout {
@@ -36,13 +38,9 @@ Item {
 
     ComboBox {
       id: comboBox
-
       property var _cachedCurrentValue
-
-      textRole: 'display'
-
       Layout.fillWidth: true
-
+      textRole: 'display'
       model: featureListModel
 
       onCurrentIndexChanged: {
@@ -62,22 +60,12 @@ Item {
         anchors.fill: parent
         propagateComposedEvents: true
 
-        onClicked: mouse.accepted = false
+        onClicked: { mouse.accepted = false; }
         onPressed: { forceActiveFocus(); mouse.accepted = false; }
         onReleased: mouse.accepted = false;
         onDoubleClicked: mouse.accepted = false;
         onPositionChanged: mouse.accepted = false;
         onPressAndHold: mouse.accepted = false;
-      }
-
-      // [hidpi fixes]
-      delegate: ItemDelegate {
-        width: comboBox.width
-        height: 36
-        text: comboBox.textRole ? (Array.isArray(comboBox.model) ? modelData[comboBox.textRole] : model[comboBox.textRole]) : modelData
-        font.weight: comboBox.currentIndex === index ? Font.DemiBold : Font.Normal
-        font.pointSize: Theme.defaultFont.pointSize
-        highlighted: comboBox.highlightedIndex == index
       }
 
       contentItem: Text {
@@ -89,6 +77,11 @@ Item {
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
         color: value === undefined || !enabled ? 'gray' : 'black'
+      }
+
+      FontMetrics {
+        id: fontMetrics
+        font: textLabel.font
       }
 
       background: Item {
@@ -112,24 +105,23 @@ Item {
           radius: 2
         }
       }
-      // [/hidpi fixes]
     }
 
     Image {
       Layout.margins: 4
-      Layout.preferredWidth: 18
+      Layout.preferredWidth: comboBox.enabled ? 18 : 0
       Layout.preferredHeight: 18
       id: addButton
       source: Theme.getThemeIcon("ic_add_black_48dp")
-      width: 18
+      width: comboBox.enabled ? 18 : 0
       height: 18
 
       MouseArea {
         anchors.fill: parent
         onClicked: {
-            addFeaturePopup.state = 'Add'
-            addFeaturePopup.currentLayer = relationCombobox._relation ? relationCombobox._relation.referencedLayer : null
-            addFeaturePopup.open()
+            embeddedPopup.state = 'Add'
+            embeddedPopup.currentLayer = relationCombobox._relation ? relationCombobox._relation.referencedLayer : null
+            embeddedPopup.open()
         }
       }
     }
@@ -142,18 +134,18 @@ Item {
     }
   }
 
-  EmbeddedFeatureForm{
-      id: addFeaturePopup
+  EmbeddedFeatureForm {
+    id: embeddedPopup
 
-      onFeatureSaved: {
-          var referencedValue = addFeaturePopup.attributeFormModel.attribute(relationCombobox._relation.resolveReferencedField(field.name))
-          var index = featureListModel.findKey(referencedValue)
-          if ( index < 0 ) {
-            // model not yet reloaded - keep the value and set it onModelReset
-            comboBox._cachedCurrentValue = referencedValue
-          } else {
-            comboBox.currentIndex = index
-          }
+    onFeatureSaved: {
+      var referencedValue = embeddedPopup.attributeFormModel.attribute(relationCombobox._relation.resolveReferencedField(field.name))
+      var index = featureListModel.findKey(referencedValue)
+      if ( ( featureListModel.addNull == true && index < 1 ) || index < 0 ) {
+        // model not yet reloaded - keep the value and set it onModelReset
+        comboBox._cachedCurrentValue = referencedValue
+      } else {
+        comboBox.currentIndex = index
       }
+    }
   }
 }

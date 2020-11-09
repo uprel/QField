@@ -70,7 +70,7 @@ class FeatureListModel : public QAbstractItemModel
     enum FeatureListRoles
     {
       KeyFieldRole = Qt::UserRole + 1,
-      DisplayStringRole
+      DisplayStringRole,
     };
 
     Q_ENUM( FeatureListRoles )
@@ -84,6 +84,11 @@ class FeatureListModel : public QAbstractItemModel
     virtual QVariant data( const QModelIndex &index, int role ) const override;
 
     Q_INVOKABLE QVariant dataFromRowIndex( int row, int role ) { return data( index( row, 0, QModelIndex() ), role ); }
+
+    /**
+     * Returns the first feature matching the key  \a value.
+     */
+    Q_INVOKABLE QgsFeature getFeatureFromKeyValue( const QVariant &value ) const;
 
     virtual QHash<int, QByteArray> roleNames() const override;
 
@@ -152,6 +157,7 @@ class FeatureListModel : public QAbstractItemModel
 
   private slots:
     void onFeatureAdded();
+    void onAttributeValueChanged( QgsFeatureId fid, int idx, const QVariant &value );
     void onFeatureDeleted();
     /**
        * Reloads a layer. This will normally be triggered
@@ -162,15 +168,17 @@ class FeatureListModel : public QAbstractItemModel
   private:
     struct Entry
     {
-      Entry( const QString &displayString, const QVariant &key )
+      Entry( const QString &displayString, const QVariant &key, const QgsFeatureId &fid )
         : displayString( displayString )
         , key( key )
+        , fid( fid )
       {}
 
       Entry() = default;
 
       QString displayString;
       QVariant key;
+      QgsFeatureId fid;
     };
 
     /**

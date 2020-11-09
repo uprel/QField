@@ -13,6 +13,7 @@ Drawer {
 
   property alias allowLayerChange: legend.enabled
   property alias currentLayer: legend.currentLayer
+  property alias layerTree: legend.model
   property MapSettings mapSettings
 
   property color mainColor: Theme.mainColor

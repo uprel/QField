@@ -13,11 +13,14 @@ jobs:
   # Run unit tests
   test:
     runs-on: ubuntu-20.04
+    env:
+      TX_TOKEN: ${{ secrets.TX_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Setup build environment
         run: |
+          sudo apt update && sudo apt install -y qttools5-dev-tools qt5-default transifex-client
           sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
           git submodule update --init --recursive
           echo "::group::GitHub Event"
@@ -25,11 +28,13 @@ jobs:
           echo "" # NOTE missing newline from the GitHub event file
           echo "::endgroup::"
           ./scripts/ci/env_gh.sh
-          ./scripts/ci/setup_signing_key.sh
+
+      - name: "🌍 Pull Translations"
+        if: ${{ env.TX_TOKEN || github.repository == 'opengisch/QField' }}
+        run: ./scripts/ci/pull_translations.sh
       - name: Test
         run: |
           ./test/test_version_number.sh
-          ./scripts/ci/pull_translations.sh
           echo "::group::Build QField"
           export QFIELD_SDK_VERSION=$(awk -F "=" '/osgeo4a_version/{print $2}' sdk.conf)
           docker-compose -f .docker/testing/docker-compose-ci.yml run qgis /usr/src/.docker/testing/build-test.sh
@@ -37,26 +42,30 @@ jobs:
 
   # Build Android packages
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    env:
+      TX_TOKEN: ${{ secrets.TX_TOKEN }}
     strategy:
       matrix:
         arch: [armv7, arm64_v8a, x86, x86_64]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Setup siging key
+      - name: Setup signing key
         env:
           SIGNINGKEY: ${{ secrets.PLAYSTORE_SIGNINGKEY }}
         run: |
           echo "$SIGNINGKEY" | base64 --decode > ./keystore.p12
       - name: Setup build environment
         run: |
+          sudo apt update && sudo apt install -y qttools5-dev-tools qt5-default transifex-client
           sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
           git submodule update --init --recursive
           ./scripts/ci/env_gh.sh
-          ./scripts/ci/setup_signing_key.sh
           pip install wheel
-          pip install transifex-client
+      - name: "🌍 Pull Translations"
+        if: ${{ env.TX_TOKEN || github.repository == 'opengisch/QField' }}
+        run: ./scripts/ci/pull_translations.sh
       - name: Build
         env:
           ARCH: ${{ matrix.arch }}
@@ -65,8 +74,8 @@ jobs:
           STOREPASS: ${{ secrets.STOREPASS }}
         run: |
           export QFIELD_SDK_VERSION=$(awk -F "=" '/osgeo4a_version/{print $2}' sdk.conf)
+          export ANDROID_NDK_PLATFORM=android-29
           ./scripts/ci/docker_pull.sh
-          ./scripts/ci/pull_translations.sh
           ./scripts/ci/build.sh
       - name: 🍺 Deploy
         run: |
@@ -78,8 +87,9 @@ jobs:
           ARCH: ${{ matrix.arch }}
 
   comment:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: build
+    if: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -98,14 +108,14 @@ jobs:
             Other architectures: [armv7](https://download.opengis.ch/qfield/ci-builds/qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-armv7.apk), [x86_64](https://download.opengis.ch/qfield/ci-builds/qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-x86_64.apk), [x86](https://download.opengis.ch/qfield/ci-builds/qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-x86.apk)
 
   cleanup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: build
     steps:
       - name: Spring Cleaning
         run: |
           echo "${ID_RSA}" > /tmp/id_rsa
           chmod 400 /tmp/id_rsa
-          ssh -i /tmp/id_rsa -o "StrictHostKeyChecking no" ${DEV_UPLOAD_USER}@${DEV_UPLOAD_HOST} "find download.opengis.ch/qfield/ci-builds/ -name '*.apk' -mtime +60 -exec rm {} \;"
+          ssh -i /tmp/id_rsa -o "StrictHostKeyChecking no" ${DEV_UPLOAD_USER}@${DEV_UPLOAD_HOST} "find download.opengis.ch/qfield/ci-builds/ -name '*.apk' -mtime +30 -exec rm {} \;"
           rm /tmp/id_rsa
         env:
           ID_RSA: ${{ secrets.ID_RSA }}

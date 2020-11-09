@@ -148,7 +148,7 @@ Popup {
                       case QFieldCloudProjectsModel.DownloadJobCreatedStatus:
                         return qsTr('Downloading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.DownloadProgress * 100) )
                       default:
-                        return qsTr('QFieldCloud packaging…')
+                        return qsTr('QFieldCloud is preparing the latest data just for you.\nThis might take some time, please hold tight…')
                     }
                   case QFieldCloudProjectsModel.Uploading: return qsTr('Uploading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.UploadProgress * 100) );
                   default: '';

@@ -211,6 +211,8 @@ Popup {
             font: Theme.defaultFont
             text: qsTr('Synchronize')
             enabled: cloudProjectsModel.canCommitCurrentProject || cloudProjectsModel.canSyncCurrentProject
+            icon.source: Theme.getThemeIcon('ic_cloud_download_24dp')
+            icon.color: 'white'
 
             onClicked: uploadProject(true)
           }
@@ -232,6 +234,8 @@ Popup {
             font: Theme.defaultFont
             text: qsTr('Push changes')
             enabled: cloudProjectsModel.canCommitCurrentProject
+            icon.source: Theme.getThemeIcon('ic_cloud_upload_24dp')
+            icon.color: 'white'
 
             onClicked: uploadProject(false)
           }
@@ -254,6 +258,8 @@ Popup {
             bgcolor: Theme.darkRed
             text: qsTr('Revert local changes')
             enabled: cloudProjectsModel.currentProjectChangesCount > 0
+            icon.source: Theme.getThemeIcon('ic_undo_white_24dp')
+            icon.color: 'white'
 
             onClicked: {
               revertDialog.open();

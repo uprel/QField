@@ -18,6 +18,7 @@
 #include "deltafilewrapper.h"
 #include "qfield.h"
 #include "utils/fileutils.h"
+#include "utils/qfieldcloudutils.h"
 
 #include <QFileInfo>
 #include <QFile>
@@ -56,12 +57,10 @@ DeltaFileWrapper::DeltaFileWrapper( const QgsProject *project, const QString &fi
     mErrorType = DeltaFileWrapper::LockError;
 
   if ( mErrorType == DeltaFileWrapper::NoError )
-    mCloudProjectId = mProject->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
+    mCloudProjectId = QFieldCloudUtils::getProjectId( mProject );
 
-  // TODO if the cloud project id is obtained from the filesystem (e.g. parent dir is the ProjectId), this check can be removed.
-  if ( ! mProject->homePath().isEmpty() )
-    if ( mErrorType == DeltaFileWrapper::NoError && mCloudProjectId.isEmpty() )
-      mErrorType = DeltaFileWrapper::NotCloudProjectError;
+  if ( mErrorType == DeltaFileWrapper::NoError && mCloudProjectId.isNull() )
+    mErrorType = DeltaFileWrapper::NotCloudProjectError;
 
   QFile deltaFile( mFileName );
 

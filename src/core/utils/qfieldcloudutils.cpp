@@ -18,9 +18,13 @@
 #include <QDir>
 #include <QString>
 
+// NOTE directly setting does not work QgsApplication::qgisSettingsDirPath();
+QString QFieldCloudUtils::sQgisSettingsDirPath = QString();
+
 const QString QFieldCloudUtils::localCloudDirectory()
 {
-  return QDir::cleanPath( QgsApplication::qgisSettingsDirPath() ) + QStringLiteral( "/cloud_projects" );
+  const QString qgisSettingsDirPath = sQgisSettingsDirPath.isNull() ? QgsApplication::qgisSettingsDirPath() : sQgisSettingsDirPath;
+  return QDir::cleanPath( qgisSettingsDirPath ) + QStringLiteral( "/cloud_projects" );
 }
 
 const QString QFieldCloudUtils::localProjectFilePath( const QString &projectId )
@@ -52,12 +56,26 @@ const QString QFieldCloudUtils::getProjectId( const QgsProject *project )
 {
   Q_ASSERT( project );
 
-  return project->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
+  QFileInfo dirFileInfo( QFileInfo( project->fileName() ).canonicalFilePath() );
+  QString dirName = dirFileInfo.dir().dirName();
+  QString fullProjectDirPath = QStringLiteral( "%1/%2" ).arg( localCloudDirectory(), dirName );
+
+  if ( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) == QDir::cleanPath( fullProjectDirPath ) )
+    return dirName;
+
+  return QString();
 }
 
 const QString QFieldCloudUtils::getProjectId( QgsProject *project )
 {
   Q_ASSERT( project );
 
-  return project->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
+  QFileInfo dirFileInfo( QFileInfo( project->fileName() ).canonicalFilePath() );
+  QString dirName = dirFileInfo.dir().dirName();
+  QString fullProjectDirPath = QStringLiteral( "%1/%2" ).arg( localCloudDirectory(), dirName );
+
+  if ( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) == QDir::cleanPath( fullProjectDirPath ) )
+    return dirName;
+
+  return QString();
 }

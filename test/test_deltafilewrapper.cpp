@@ -23,6 +23,7 @@
 #include "qfield.h"
 #include "deltafilewrapper.h"
 #include "utils/fileutils.h"
+#include "utils/qfieldcloudutils.h"
 
 
 class TestDeltaFileWrapper: public QObject
@@ -31,17 +32,22 @@ class TestDeltaFileWrapper: public QObject
   private slots:
     void initTestCase()
     {
-      QTemporaryDir projectDir;
-      projectDir.setAutoRemove( false );
+      QTemporaryDir settingsDir;
+      settingsDir.setAutoRemove( false );
 
-      QVERIFY2( projectDir.isValid(), "Failed to create temp dir" );
+      QVERIFY2( settingsDir.isValid(), "Failed to create temp dir" );
       QVERIFY2( mTmpFile.open(), "Cannot open temporary delta file" );
+      QVERIFY2( QDir( settingsDir.path() ).mkpath( QStringLiteral("cloud_projects/TEST_PROJECT_ID") ), "Failed to create project dir" );
 
+      QDir projectDir( QStringLiteral( "%1/cloud_projects/TEST_PROJECT_ID" ).arg( settingsDir.path() ) );
+      QFieldCloudUtils::sQgisSettingsDirPath = settingsDir.path();
+      QFile projectFile( QStringLiteral( "%1/%2" ).arg( projectDir.path(), QStringLiteral( "project.qgs" ) ) );
+      QFile attachmentFile( QStringLiteral( "%1/%2" ).arg( projectDir.path(), QStringLiteral( "attachment.jpg" ) ) );
 
-      QgsProject::instance()->setPresetHomePath( projectDir.path() );
-      QgsProject::instance()->writeEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ), QStringLiteral( "TEST_PROJECT_ID" ) );
+      QVERIFY( projectFile.open( QIODevice::WriteOnly ) );
+      QVERIFY( projectFile.flush() );
 
-      QFile attachmentFile( QStringLiteral( "%1/%2" ) .arg( projectDir.path(), QStringLiteral( "attachment.jpg" ) ) );
+      QgsProject::instance()->setFileName( projectFile.fileName() );
 
       const char *fileContents = "кирилица"; // SHA 256 71055d022f50027387eae32426a1857d6e2fa2d416d64753b63470db7f00f239
       QVERIFY( attachmentFile.open( QIODevice::ReadWrite ) );

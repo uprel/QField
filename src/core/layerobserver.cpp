@@ -133,6 +133,12 @@ void LayerObserver::onHomePathChanged()
   mCurrentDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( true ) ) );
   mCommittedDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( false ) ) );
 
+  if ( mCurrentDeltaFileWrapper->hasError() )
+    QgsLogger::warning( QStringLiteral( "The current delta file wrapper experienced an error: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
+
+  if ( mCommittedDeltaFileWrapper->hasError() )
+    QgsLogger::warning( QStringLiteral( "The current delta file wrapper experienced an error: %1" ).arg( mCommittedDeltaFileWrapper->errorString() ) );
+
   emit currentDeltaFileWrapperChanged();
   emit committedDeltaFileWrapperChanged();
   addLayerListeners();

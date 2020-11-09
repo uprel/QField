@@ -13,6 +13,8 @@ jobs:
   # Run unit tests
   test:
     runs-on: ubuntu-20.04
+    env:
+      TX_TOKEN: ${{ secrets.TX_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -28,9 +30,7 @@ jobs:
           ./scripts/ci/env_gh.sh
 
       - name: "🌍 Pull Translations"
-        if: ${{ !!secrets.TX_TOKEN }}
-        env:
-          TX_TOKEN: ${{ secrets.TX_TOKEN }}
+        if: ${{ env.TX_TOKEN || github.repository == 'opengisch/QField' }}
         run: ./scripts/ci/pull_translations.sh
       - name: Test
         run: |
@@ -43,6 +43,8 @@ jobs:
   # Build Android packages
   build:
     runs-on: ubuntu-20.04
+    env:
+      TX_TOKEN: ${{ secrets.TX_TOKEN }}
     strategy:
       matrix:
         arch: [armv7, arm64_v8a, x86, x86_64]
@@ -62,9 +64,7 @@ jobs:
           ./scripts/ci/env_gh.sh
           pip install wheel
       - name: "🌍 Pull Translations"
-        if: ${{ !!secrets.TX_TOKEN }}
-        env:
-          TX_TOKEN: ${{ secrets.TX_TOKEN }}
+        if: ${{ env.TX_TOKEN || github.repository == 'opengisch/QField' }}
         run: ./scripts/ci/pull_translations.sh
       - name: Build
         env:

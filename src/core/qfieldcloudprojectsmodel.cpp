@@ -807,7 +807,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   updateCanSyncCurrentProject();
   updateCurrentProjectChangesCount();
 
-  emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadProgressRole );
+  emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadAttachmentsProgressRole << UploadDeltaProgressRole << UploadDeltaStatusRole );
 
   // //////////
   // prepare attachment files to be uploaded
@@ -836,6 +836,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   if ( deltaFileToUpload.isEmpty() )
   {
     mCloudProjects[index].status = ProjectStatus::Idle;
+    emit dataChanged( idx, idx,  QVector<int>() << StatusRole );
     return;
   }
 
@@ -849,6 +850,12 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
   Q_ASSERT( deltasCloudReply );
 
+  connect( deltasCloudReply, &NetworkReply::uploadProgress, this, [ = ]( int bytesSent, int bytesTotal )
+  {
+    mCloudProjects[index].uploadDeltaProgress = std::clamp( ( static_cast<double>( bytesSent ) / bytesTotal ), 0., 1. );
+
+    emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaProgressRole );
+  });
   connect( deltasCloudReply, &NetworkReply::finished, this, [ = ]()
   {
     QNetworkReply *deltasReply = deltasCloudReply->reply();
@@ -869,8 +876,11 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
       return;
     }
 
+    mCloudProjects[index].uploadDeltaProgress = 1;
     mCloudProjects[index].deltaFileUploadStatus = DeltaFilePendingStatus;
     mCloudProjects[index].deltaLayersToDownload = deltaFile->deltaLayerIds();
+
+    emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaProgressRole << UploadDeltaStatusRole );
     emit networkDeltaUploaded( projectId );
   } );
 
@@ -1018,6 +1028,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
   Q_ASSERT( index >= 0 && index < mCloudProjects.size() );
 
+  QModelIndex idx = createIndex( index, 0 );
   NetworkReply *deltaStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/deltas/%1/%2/" ).arg( mCloudProjects[index].id, mCloudProjects[index].deltaFileId ) );
 
   mCloudProjects[index].deltaFileUploadStatusString = QString();
@@ -1038,6 +1049,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
       // TODO this is oversimplification. e.g. 404 error is when the requested delta file id is not existant
       mCloudProjects[index].deltaFileUploadStatusString = QStringLiteral( "[HTTP%1] Networking error, please retry!" ).arg( statusCode );
 
+      emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole );
       emit networkDeltaStatusChecked( projectId );
 
       return;
@@ -1073,6 +1085,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
       QgsLogger::warning( mCloudProjects[index].deltaFileUploadStatusString );
     }
 
+    emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole );
     emit networkDeltaStatusChecked( projectId );
   } );
 }
@@ -1096,7 +1109,7 @@ void QFieldCloudProjectsModel::projectUploadAttachments( const QString &projectI
     {
       Q_UNUSED( bytesTotal );
       mCloudProjects[index].uploadAttachments[fileName].bytesTransferred = bytesSent;
-      emit dataChanged( idx, idx, QVector<int>() << UploadProgressRole );
+      emit dataChanged( idx, idx, QVector<int>() << UploadAttachmentsProgressRole );
     } );
 
     connect( attachmentCloudReply, &NetworkReply::finished, this, [ = ]()
@@ -1117,7 +1130,7 @@ void QFieldCloudProjectsModel::projectUploadAttachments( const QString &projectI
 
       mCloudProjects[index].uploadAttachmentsFinished++;
       mCloudProjects[index].uploadAttachmentsProgress = mCloudProjects[index].uploadAttachmentsFinished / attachmentFileNames.size();
-      emit dataChanged( idx, idx, QVector<int>() << UploadProgressRole );
+      emit dataChanged( idx, idx, QVector<int>() << UploadAttachmentsProgressRole );
     } );
   }
 }
@@ -1231,7 +1244,9 @@ QHash<int, QByteArray> QFieldCloudProjectsModel::roleNames() const
   roles[ErrorStringRole] = "ErrorString";
   roles[DownloadProgressRole] = "DownloadProgress";
   roles[DownloadJobStatusRole] = "DownloadJobStatus";
-  roles[UploadProgressRole] = "UploadProgress";
+  roles[UploadAttachmentsProgressRole] = "UploadAttachmentsProgress";
+  roles[UploadDeltaProgressRole] = "UploadDeltaProgress";
+  roles[UploadDeltaStatusRole] = "UploadDeltaStatus";
   roles[LocalDeltasCountRole] = "LocalDeltasCount";
   roles[LocalPathRole] = "LocalPath";
   return roles;
@@ -1347,9 +1362,13 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
       return mCloudProjects.at( index.row() ).downloadJobStatus;
     case DownloadProgressRole:
     return mCloudProjects.at( index.row() ).downloadProgress;
-    case UploadProgressRole:
+    case UploadAttachmentsProgressRole:
       // when we start syncing also the photos, it would make sense to go there
-      return 0.5 + 0.5 * (mCloudProjects.at( index.row() ).uploadAttachmentsProgress);
+      return mCloudProjects.at( index.row() ).uploadAttachmentsProgress;
+    case UploadDeltaProgressRole:
+      return mCloudProjects.at( index.row() ).uploadDeltaProgress;
+    case UploadDeltaStatusRole:
+      return mCloudProjects.at( index.row() ).deltaFileUploadStatus;
     case LocalDeltasCountRole:
       return mCloudProjects.at( index.row() ).currentDeltasCount + mCloudProjects.at( index.row() ).committedDeltasCount;
     case LocalPathRole:

@@ -51,7 +51,9 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       ErrorStringRole,
       DownloadProgressRole,
       DownloadJobStatusRole,
-      UploadProgressRole,
+      UploadAttachmentsProgressRole,
+      UploadDeltaProgressRole,
+      UploadDeltaStatusRole,
       LocalDeltasCountRole,
       LocalPathRole
     };
@@ -296,6 +298,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       int uploadAttachmentsFailed = 0;
       int uploadAttachmentsBytesTotal = 0;
       double uploadAttachmentsProgress = 0.0; // range from 0.0 to 1.0
+      double uploadDeltaProgress = 0.0; // range from 0.0 to 1.0
 
       int currentDeltasCount = 0;
       int committedDeltasCount = 0;

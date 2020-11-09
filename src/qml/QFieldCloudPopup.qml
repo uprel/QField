@@ -152,6 +152,50 @@ Popup {
           Layout.fillWidth: true
         }
 
+        Rectangle {
+          Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+          Layout.margins: 10
+          width: 64
+          height: 64
+          color: 'transparent'
+          visible: cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Downloading ||
+                   cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading
+
+          Image {
+            id: statusIcon
+            anchors.fill: parent
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            source: switch(cloudProjectsModel.currentProjectData.Status ) {
+                    case QFieldCloudProjectsModel.Downloading: Theme.getThemeVectorIcon('ic_cloud_download_24dp'); break;
+                    case QFieldCloudProjectsModel.Uploading: Theme.getThemeVectorIcon('ic_cloud_upload_24dp'); break;
+                    default: '';
+                  }
+            width: parent.width
+            height: parent.height
+            sourceSize.width: width * screen.devicePixelRatio
+            sourceSize.height: height * screen.devicePixelRatio
+            opacity: 1
+
+            SequentialAnimation {
+              OpacityAnimator {
+                  from: 1
+                  to: 0.2
+                  duration: 2000
+                  target: statusIcon
+              }
+              OpacityAnimator {
+                  from: 0.2
+                  to: 1
+                  duration: 2000
+                  target: statusIcon
+              }
+              running: true
+              loops: Animation.Infinite
+            }
+          }
+        }
+
         Text {
           id: transferErrorText
           visible: false

@@ -1609,13 +1609,13 @@ ApplicationWindow {
           : displayToast( qsTr( "Project %1 successfully downloaded, it's now available to open" ).arg( projectName ) );
     }
 
-    onSyncFinished: function ( projectId, hasError, errorString ) {
+    onPushFinished: function ( projectId, hasError, errorString ) {
       if ( hasError ) {
-        displayToast( qsTr( "Project failed to synchronize with QFieldCloud: %1" ).arg( errorString ) )
+        displayToast( qsTr( "Changes failed to reach QFieldCloud: %1" ).arg( errorString ) )
         return;
       }
 
-      displayToast( qsTr( "Project successfully synchronized with QFieldCloud" ) )
+      displayToast( qsTr( "Changes successfully pushed to QFieldCloud" ) )
     }
 
     onWarning: displayToast( message )

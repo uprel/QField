@@ -211,7 +211,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void networkAllAttachmentsUploaded( const QString &projectId );
     void networkLayerDownloaded( const QString &projectId );
     void networkAllLayersDownloaded( const QString &projectId );
-    void syncFinished( const QString &projectId, bool hasError, const QString &errorString = QString() );
+    void pushFinished( const QString &projectId, bool hasError, const QString &errorString = QString() );
     void downloadFinished( const QString &projectId, bool hasError, const QString &errorString = QString() );
 
   private slots:

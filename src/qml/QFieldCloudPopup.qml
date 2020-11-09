@@ -238,7 +238,7 @@ Popup {
           Connections {
             target: cloudProjectsModel
 
-            function onSyncFinished(projectId, hasError, errorString) {
+            function onPushFinished(projectId, hasError, errorString) {
               transferErrorText.visible = hasError && cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Idle;
 
               if (transferErrorText.visible)

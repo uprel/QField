@@ -918,7 +918,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
       QModelIndex idx = createIndex( index, 0 );
 
       emit dataChanged( idx, idx, QVector<int>() << StatusRole );
-      emit syncFinished( projectId, false );
+      emit pushFinished( projectId, false );
     }
   } );
 
@@ -983,7 +983,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
           QModelIndex idx = createIndex( index, 0 );
           emit dataChanged( idx, idx, QVector<int>() << StatusRole );
 
-          emit syncFinished( projectId, false );
+          emit pushFinished( projectId, false );
         }
     }
   } );
@@ -1167,7 +1167,7 @@ void QFieldCloudProjectsModel::projectCancelUpload( const QString &projectId )
   QModelIndex idx = createIndex( index, 0 );
 
   emit dataChanged( idx, idx, QVector<int>() << StatusRole << ErrorStatusRole );
-  emit syncFinished( projectId, true, mCloudProjects[index].deltaFileUploadStatusString );
+  emit pushFinished( projectId, true, mCloudProjects[index].deltaFileUploadStatusString );
 
   return;
 }

@@ -60,6 +60,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     Q_ENUM( ColumnRole )
 
+    //! Whether the project is busy or idle.
     enum class ProjectStatus
     {
       Idle,
@@ -69,6 +70,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     Q_ENUM( ProjectStatus )
 
+    //! Whether the project has experienced an error.
     enum ProjectErrorStatus
     {
       NoErrorStatus,
@@ -78,15 +80,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     Q_ENUM( ProjectErrorStatus )
 
-    enum ProjectServerStatus
-    {
-      IdleServerStatus,
-      ApplyingDeltasServerStatus,
-      ExportingProjectServerStatus,
-    };
-
-    Q_ENUM( ProjectServerStatus )
-
+    //! Whether the project has been available locally and/or remotely.
     enum ProjectCheckout
     {
       RemoteCheckout = 2 << 0,
@@ -98,6 +92,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     Q_DECLARE_FLAGS( ProjectCheckouts, ProjectCheckout )
     Q_FLAG( ProjectCheckouts )
 
+    //! Whether the project has no or local and/or remote modification. Indicates wheter can be synced.
     enum ProjectModification
     {
       NoModification = 0,
@@ -110,6 +105,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     Q_DECLARE_FLAGS( ProjectModifications, ProjectModification )
     Q_FLAG( ProjectModifications )
 
+    //! The status of the running server job for applying deltas on a project.
     enum DeltaFileStatus
     {
       DeltaFileErrorStatus,
@@ -124,6 +120,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     Q_ENUM( DeltaFileStatus )
 
+    //! The status of the running server job for exporting a project.
     enum DownloadJobStatus
     {
       DownloadJobErrorStatus,
@@ -138,56 +135,100 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     QFieldCloudProjectsModel();
 
+    //! Stores the current cloud connection.
     Q_PROPERTY( QFieldCloudConnection *cloudConnection READ cloudConnection WRITE setCloudConnection NOTIFY cloudConnectionChanged )
 
+    //! Returns the currently used cloud connection.
     QFieldCloudConnection *cloudConnection() const;
+
+    //! Sets the cloud connection.
     void setCloudConnection( QFieldCloudConnection *cloudConnection );
 
+    //! Stores the current layer observer.
     Q_PROPERTY( LayerObserver *layerObserver READ layerObserver WRITE setLayerObserver NOTIFY layerObserverChanged )
 
+    //! Returns the currently used layer observer.
     LayerObserver *layerObserver() const;
+
+    //! Sets the layer observer.
     void setLayerObserver( LayerObserver *layerObserver );
 
+    //! Stores the cloud project id of the currently opened project. Empty string if missing.
     Q_PROPERTY( QString currentProjectId READ currentProjectId WRITE setCurrentProjectId NOTIFY currentProjectIdChanged )
-    Q_PROPERTY( QVariant currentProjectData READ currentProjectData NOTIFY currentProjectDataChanged )
 
-    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
-    Q_PROPERTY( int currentProjectChangesCount READ currentProjectChangesCount NOTIFY currentProjectChangesCountChanged )
-    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
-    Q_PROPERTY( bool canCommitCurrentProject READ canCommitCurrentProject NOTIFY canCommitCurrentProjectChanged )
-    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
-    Q_PROPERTY( bool canSyncCurrentProject READ canSyncCurrentProject NOTIFY canSyncCurrentProjectChanged )
-    Q_PROPERTY( QgsGpkgFlusher *gpkgFlusher WRITE setGpkgFlusher NOTIFY gpkgFlusherChanged )
-
+    //! Returns the cloud project id of the currently opened project.
     QString currentProjectId() const;
+
+    //! Sets the cloud project id of the currently opened project.
     void setCurrentProjectId( const QString &currentProjectId );
 
+    //! Stores the geopackage flusher, write only
+    Q_PROPERTY( QgsGpkgFlusher *gpkgFlusher WRITE setGpkgFlusher NOTIFY gpkgFlusherChanged )
+
+    //! Sets the geopackage flusher
     void setGpkgFlusher( QgsGpkgFlusher *flusher );
 
+    //! Stores the cloud project data of the currently opened project. Empty map if missing.
+    Q_PROPERTY( QVariant currentProjectData READ currentProjectData NOTIFY currentProjectDataChanged )
+
+    //! Returns the cloud project data of the currently opened project.
     QVariantMap currentProjectData() const;
 
+    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
+    //! Stores the total number of changes (deltas) of the currently opened project. Readonly.
+    Q_PROPERTY( int currentProjectChangesCount READ currentProjectChangesCount NOTIFY currentProjectChangesCountChanged )
+
+    //! Returns the total number of changes (deltas) of the currently opened project.
     int currentProjectChangesCount() const;
 
+    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
+    //! Stores whether there are uncommitted deltas and they can be commited.
+    Q_PROPERTY( bool canCommitCurrentProject READ canCommitCurrentProject NOTIFY canCommitCurrentProjectChanged )
+
+    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
+    //! Stores whether there are committed deltas and they can be pushed.
+    Q_PROPERTY( bool canSyncCurrentProject READ canSyncCurrentProject NOTIFY canSyncCurrentProjectChanged )
+
+    //! Returns the cloud project data for given \a projectId.
     Q_INVOKABLE QVariantMap getProjectData( const QString &projectId ) const;
+
+    //! Requests the cloud projects list from the server.
     Q_INVOKABLE void refreshProjectsList();
+
+    //! Downloads a cloud project with given \a projectId and all of its files.
     Q_INVOKABLE void downloadProject( const QString &projectId );
+
+    //! Pushes all local deltas for given \a projectId. If \a shouldDownloadUpdates is true, also calls `downloadProject`.
     Q_INVOKABLE void uploadProject( const QString &projectId, const bool shouldDownloadUpdates );
+
+    //! Remove local cloud project with given \a projectId from the device storage
     Q_INVOKABLE void removeLocalProject( const QString &projectId );
 
-    /**
-     * Reverts the changes of the current cloud project.
-     */
+    //! Reverts the deltas of the current cloud project. The changes would applied in reverse order and opposite methods, e.g. "delete" becomes "create".
     Q_INVOKABLE bool revertLocalChangesFromCurrentProject();
+
+    //! Discards the delta records of the current cloud project.
     Q_INVOKABLE bool discardLocalChangesFromCurrentProject();
+
+    //! Returns the cloud project status for given \a projectId.
     Q_INVOKABLE ProjectStatus projectStatus( const QString &projectId );
+
+    //! Returns the cloud project modification for given \a projectId.
     Q_INVOKABLE ProjectModifications projectModification( const QString &projectId ) const;
+
+    //! Updates the project modification for given \a projectId.
     Q_INVOKABLE void refreshProjectModification( const QString &projectId );
 
+    //! Returns the model role names.
     QHash<int, QByteArray> roleNames() const override;
 
+    //! Returns number of rows.
     int rowCount( const QModelIndex &parent ) const override;
+
+    //! Returns the data at given \a index with given \a role.
     QVariant data( const QModelIndex &index, int role ) const override;
 
+    //! Reloads the list of cloud projects with the given list of \a remoteProjects.
     Q_INVOKABLE void reload( const QJsonArray &remoteProjects );
 
   signals:
@@ -275,7 +316,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       ProjectErrorStatus errorStatus = ProjectErrorStatus::NoErrorStatus;
       ProjectCheckouts checkout;
       ProjectModifications modification = ProjectModification::NoModification;
-      ProjectServerStatus serverStatus = ProjectServerStatus::IdleServerStatus;
       QString localPath;
 
       QString deltaFileId;

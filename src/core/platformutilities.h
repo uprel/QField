@@ -40,7 +40,8 @@ class PlatformUtilities : public QObject
     virtual QString shareDir() const;
     virtual QString packagePath() const;
     virtual QString qgsProject() const;
-    virtual QString localizedDataPaths() const;
+    virtual QString qfieldDataDir() const;
+    Q_INVOKABLE QStringList availableGrids() const;
     Q_INVOKABLE bool createDir( const QString &path, const QString &dirname ) const;
     Q_INVOKABLE bool rmFile( const QString &filename ) const;
     Q_INVOKABLE bool renameFile( const QString &filename, const QString &newname ) const;
@@ -116,6 +117,8 @@ class PlatformUtilities : public QObject
      * Show the rate this app screen if required.
     */
     Q_INVOKABLE virtual void showRateThisApp() const {};
+
+    static PlatformUtilities *instance();
 
 };
 #endif // PLATFORMUTILITIES_H

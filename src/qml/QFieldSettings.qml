@@ -17,6 +17,7 @@ Page {
   property alias nativeCamera: registry.nativeCamera
   property alias autoSave: registry.autoSave
   property alias mouseAsTouchScreen: registry.mouseAsTouchScreen
+  property alias verticalGrid: registry.verticalGrid
 
   Settings {
     id: registry
@@ -28,6 +29,7 @@ Page {
     property bool nativeCamera: true
     property bool autoSave
     property bool mouseAsTouchScreen
+    property string verticalGrid: ""
   }
 
   ListModel {
@@ -102,6 +104,12 @@ Page {
         font: Theme.defaultFont
         anchors.verticalCenter : parent.verticalCenter
       }
+      TabButton {
+        height: 48
+        text: qsTr("Grids")
+        font: Theme.defaultFont
+        anchors.verticalCenter : parent.verticalCenter
+      }
     }
 
     StackLayout {
@@ -166,8 +174,49 @@ Page {
           anchors.margins: 4
         }
       }
+
+      Item {
+          ColumnLayout {
+              anchors.fill: parent
+              anchors.topMargin: 8
+              anchors.leftMargin: 18
+              anchors.rightMargin: 18
+
+              Label {
+                  text: qsTr( "Select a vertical grid shift in the combo box below to increase vertical location accuracy. Leave blank to disable this feature." )
+                  font: Theme.defaultFont
+
+                  wrapMode: Text.WordWrap
+                  Layout.fillWidth: true
+              }
+
+              ComboBox {
+                  Layout.fillWidth: true
+                  model: [ qsTr( "No grid (use raw altitude from device)" ) ].concat( platformUtilities.availableGrids() );
+
+                  onCurrentIndexChanged: {
+                      if ( currentIndex > 0 ) {
+                          verticalGrid = platformUtilities.availableGrids()[currentIndex - 1];
+                      } else {
+                          verticalGrid = '';
+                      }
+                  }
+
+                  Component.onCompleted: {
+                      currentIndex = verticalGrid !== '' ? find(verticalGrid) : 0;
+                  }
+              }
+
+              Item {
+                  // spacer item
+                  Layout.fillWidth: true
+                  Layout.fillHeight: true
+              }
+          }
+      }
     }
   }
+
   header: PageHeader {
       title: qsTr("QField Settings")
 

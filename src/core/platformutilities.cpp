@@ -20,12 +20,20 @@
 
 #include "platformutilities.h"
 #include "projectsource.h"
+
 #include <QDebug>
 #include <QDir>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QFileDialog>
 #include <QTimer>
+
+#if defined (Q_OS_ANDROID)
+#include "androidplatformutilities.h"
+Q_GLOBAL_STATIC(AndroidPlatformUtilities, sPlatformUtils)
+#else
+Q_GLOBAL_STATIC(PlatformUtilities, sPlatformUtils)
+#endif
 
 PlatformUtilities::~PlatformUtilities()
 {
@@ -51,9 +59,22 @@ QString PlatformUtilities::qgsProject() const
   return QString();
 }
 
-QString PlatformUtilities::localizedDataPaths() const
+QString PlatformUtilities::qfieldDataDir() const
 {
   return QString();
+}
+
+QStringList PlatformUtilities::availableGrids() const
+{
+  if ( !qfieldDataDir().isEmpty() )
+  {
+    QDir gridsDir( qfieldDataDir() + "proj/" );
+    if ( gridsDir.exists() )
+    {
+      return gridsDir.entryList( QStringList() << QStringLiteral( "*.tif" ) << QStringLiteral( "*.gtx" ) << QStringLiteral( "*.gsb" ) << QStringLiteral( "*.byn" ) );
+    }
+  }
+  return QStringList();
 }
 
 bool PlatformUtilities::createDir( const QString &path, const QString &dirname ) const
@@ -138,3 +159,7 @@ bool PlatformUtilities::checkWriteExternalStoragePermissions() const
   return true;
 }
 
+PlatformUtilities *PlatformUtilities::instance()
+{
+  return sPlatformUtils;
+}

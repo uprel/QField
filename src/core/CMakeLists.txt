@@ -1,5 +1,6 @@
 SET(QFIELD_CORE_SRCS
   appinterface.cpp
+  appcoordinateoperationhandlers.cpp
   attributeformmodelbase.cpp
   attributeformmodel.cpp
   badlayerhandler.cpp
@@ -74,6 +75,7 @@ SET(QFIELD_CORE_SRCS
 SET(QFIELD_CORE_HDRS
   qfield.h
   appinterface.h
+  appcoordinateoperationhandlers.h
   attributeformmodelbase.h
   attributeformmodel.h
   badlayerhandler.h
@@ -165,6 +167,8 @@ FIND_PACKAGE(Sqlite3)
 INCLUDE_DIRECTORIES(SYSTEM
   ${CMAKE_SOURCE_DIR}/src/core/qgsquick
   ${QGIS_INCLUDE_DIR}
+  ${PROJ_INCLUDE_DIR}
+  ${GDAL_INCLUDE_DIR}
   ${SQLITE3_INCLUDE_DIR}
 )
 
@@ -177,7 +181,13 @@ INCLUDE_DIRECTORIES(
 
 ADD_LIBRARY(qfield_core SHARED ${QFIELD_CORE_SRCS} ${QFIELD_CORE_HDRS})
 
-TARGET_LINK_LIBRARIES(qfield_core
+TARGET_COMPILE_FEATURES(qfield_core PUBLIC cxx_std_17)
+SET_TARGET_PROPERTIES(qfield_core PROPERTIES AUTOMOC TRUE)
+
+TARGET_COMPILE_FEATURES(qfield_core PUBLIC cxx_std_17)
+SET_TARGET_PROPERTIES(qfield_core PROPERTIES AUTOMOC TRUE)
+
+TARGET_LINK_LIBRARIES(qfield_core PUBLIC
   tess
   Qt5::Core
   Qt5::Gui
@@ -196,10 +206,12 @@ TARGET_LINK_LIBRARIES(qfield_core
   Qt5::WebView
   ${QGIS_CORE_LIBRARY}
   ${QGIS_ANALYSIS_LIBRARY}
+  ${PROJ_LIBRARY}
+  ${GDAL_LIBRARY}
 )
 
 IF (ANDROID)
-  TARGET_LINK_LIBRARIES(qfield_core
+  TARGET_LINK_LIBRARIES(qfield_core PUBLIC
     Qt5::AndroidExtras
   )
 ENDIF (ANDROID)
@@ -212,4 +224,3 @@ INSTALL(TARGETS qfield_core
   FRAMEWORK DESTINATION ${QFIELD_FW_SUBDIR}
   PUBLIC_HEADER DESTINATION ${QFIELD_INCLUDE_DIR}
 )
-

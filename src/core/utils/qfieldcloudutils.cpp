@@ -17,6 +17,7 @@
 #include <qgsapplication.h>
 #include <QDir>
 #include <QString>
+#include "qgsmessagelog.h"
 
 // NOTE directly setting does not work QgsApplication::qgisSettingsDirPath();
 QString QFieldCloudUtils::sQgisSettingsDirPath = QString();
@@ -60,6 +61,11 @@ const QString QFieldCloudUtils::getProjectId( const QgsProject *project )
   QString dirName = dirFileInfo.dir().dirName();
   QString fullProjectDirPath = QStringLiteral( "%1/%2" ).arg( localCloudDirectory(), dirName );
 
+  QgsMessageLog::logMessage( QStringLiteral( "filename: %1" ).arg( project->fileName() ) );
+  QgsMessageLog::logMessage( QStringLiteral( "dir_cannonical_path: %1 " ).arg( dirFileInfo.dir().canonicalPath() ) );
+  QgsMessageLog::logMessage( QStringLiteral( "clean_cannonical_path: %1 " ).arg( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) ) );
+  QgsMessageLog::logMessage( QStringLiteral( "clean_project_dir_path: %1 " ).arg( QDir::cleanPath( fullProjectDirPath ) ) );
+
   if ( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) == QDir::cleanPath( fullProjectDirPath ) )
     return dirName;
 
@@ -73,6 +79,11 @@ const QString QFieldCloudUtils::getProjectId( QgsProject *project )
   QFileInfo dirFileInfo( QFileInfo( project->fileName() ).canonicalFilePath() );
   QString dirName = dirFileInfo.dir().dirName();
   QString fullProjectDirPath = QStringLiteral( "%1/%2" ).arg( localCloudDirectory(), dirName );
+
+  QgsMessageLog::logMessage( QStringLiteral( "filename: %1" ).arg( project->fileName() ) );
+  QgsMessageLog::logMessage( QStringLiteral( "dir_cannonical_path: %1 " ).arg( dirFileInfo.dir().canonicalPath() ) );
+  QgsMessageLog::logMessage( QStringLiteral( "clean_cannonical_path: %1 " ).arg( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) ) );
+  QgsMessageLog::logMessage( QStringLiteral( "clean_project_dir_path: %1 " ).arg( QDir::cleanPath( fullProjectDirPath ) ) );
 
   if ( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) == QDir::cleanPath( fullProjectDirPath ) )
     return dirName;

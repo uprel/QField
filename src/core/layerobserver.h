@@ -202,6 +202,12 @@ class LayerObserver : public QObject
 
 
     /**
+     * Layer ids being observed for changes. Should reset when the project is changed.
+     */
+    QSet<QString> mObservedLayerIds;
+
+
+    /**
      * Add the needed event listeners to monitor for changes.
      * Assigns listeners only for layer actions of `cloud` and `offline`.
      */

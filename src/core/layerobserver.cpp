@@ -141,6 +141,9 @@ void LayerObserver::onHomePathChanged()
 
   emit currentDeltaFileWrapperChanged();
   emit committedDeltaFileWrapperChanged();
+
+  mObservedLayerIds.clear();
+
   addLayerListeners();
 }
 
@@ -328,6 +331,9 @@ void LayerObserver::addLayerListeners()
 
     if ( vl && vl->dataProvider() )
     {
+      if ( mObservedLayerIds.contains( vl->id() ) )
+        continue;
+
       if ( !vl->readOnly() && QFieldCloudUtils::isCloudAction( vl ) )
       {
         // Ignore all layers that cannot determine a primary key column
@@ -343,6 +349,14 @@ void LayerObserver::addLayerListeners()
           continue;
         }
 
+        disconnect( vl, &QgsVectorLayer::beforeCommitChanges, this, &LayerObserver::onBeforeCommitChanges );
+        disconnect( vl, &QgsVectorLayer::committedFeaturesAdded, this, &LayerObserver::onCommittedFeaturesAdded );
+        disconnect( vl, &QgsVectorLayer::committedFeaturesRemoved, this, &LayerObserver::onCommittedFeaturesRemoved );
+        disconnect( vl, &QgsVectorLayer::committedAttributeValuesChanges, this, &LayerObserver::onCommittedAttributeValuesChanges );
+        disconnect( vl, &QgsVectorLayer::committedGeometriesChanges, this, &LayerObserver::onCommittedGeometriesChanges );
+        // TODO use the future "afterCommitChanges" signal
+        disconnect( vl, &QgsVectorLayer::editingStopped, this, &LayerObserver::onEditingStopped );
+
         // for `cloud` projects, we keep track of any change that has occurred
         connect( vl, &QgsVectorLayer::beforeCommitChanges, this, &LayerObserver::onBeforeCommitChanges );
         connect( vl, &QgsVectorLayer::committedFeaturesAdded, this, &LayerObserver::onCommittedFeaturesAdded );
@@ -351,6 +365,8 @@ void LayerObserver::addLayerListeners()
         connect( vl, &QgsVectorLayer::committedGeometriesChanges, this, &LayerObserver::onCommittedGeometriesChanges );
         // TODO use the future "afterCommitChanges" signal
         connect( vl, &QgsVectorLayer::editingStopped, this, &LayerObserver::onEditingStopped );
+
+        mObservedLayerIds.insert( vl->id() );
       }
     }
   }

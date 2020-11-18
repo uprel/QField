@@ -57,17 +57,9 @@ const QString QFieldCloudUtils::getProjectId( const QgsProject *project )
 {
   Q_ASSERT( project );
 
-  QFileInfo dirFileInfo( QFileInfo( project->fileName() ).canonicalFilePath() );
-  QString dirName = dirFileInfo.dir().dirName();
-  QString fullProjectDirPath = QStringLiteral( "%1/%2" ).arg( localCloudDirectory(), dirName );
-
-  QgsMessageLog::logMessage( QStringLiteral( "filename: %1" ).arg( project->fileName() ) );
-  QgsMessageLog::logMessage( QStringLiteral( "dir_cannonical_path: %1 " ).arg( dirFileInfo.dir().canonicalPath() ) );
-  QgsMessageLog::logMessage( QStringLiteral( "clean_cannonical_path: %1 " ).arg( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) ) );
-  QgsMessageLog::logMessage( QStringLiteral( "clean_project_dir_path: %1 " ).arg( QDir::cleanPath( fullProjectDirPath ) ) );
-
-  if ( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) == QDir::cleanPath( fullProjectDirPath ) )
-    return dirName;
+  QFileInfo fi( project->fileName() );
+  if ( project->fileName().startsWith( localCloudDirectory() ) )
+    return fi.dir().dirName();
 
   return QString();
 }
@@ -76,17 +68,9 @@ const QString QFieldCloudUtils::getProjectId( QgsProject *project )
 {
   Q_ASSERT( project );
 
-  QFileInfo dirFileInfo( QFileInfo( project->fileName() ).canonicalFilePath() );
-  QString dirName = dirFileInfo.dir().dirName();
-  QString fullProjectDirPath = QStringLiteral( "%1/%2" ).arg( localCloudDirectory(), dirName );
-
-  QgsMessageLog::logMessage( QStringLiteral( "filename: %1" ).arg( project->fileName() ) );
-  QgsMessageLog::logMessage( QStringLiteral( "dir_cannonical_path: %1 " ).arg( dirFileInfo.dir().canonicalPath() ) );
-  QgsMessageLog::logMessage( QStringLiteral( "clean_cannonical_path: %1 " ).arg( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) ) );
-  QgsMessageLog::logMessage( QStringLiteral( "clean_project_dir_path: %1 " ).arg( QDir::cleanPath( fullProjectDirPath ) ) );
-
-  if ( QDir::cleanPath( dirFileInfo.dir().canonicalPath() ) == QDir::cleanPath( fullProjectDirPath ) )
-    return dirName;
+  QFileInfo fi( project->fileName() );
+  if ( project->fileName().startsWith( localCloudDirectory() ) )
+    return fi.dir().dirName();
 
   return QString();
 }

@@ -18,6 +18,7 @@
 #include "qfieldcloudutils.h"
 #include "layerobserver.h"
 #include "deltafilewrapper.h"
+#include "fileutils.h"
 #include "qfield.h"
 
 #include <qgis.h>
@@ -533,6 +534,13 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
       {
         QJsonObject fileObject = file.toObject();
         QString fileName = fileObject.value( QStringLiteral( "name" ) ).toString();
+        QString projectFileName = QStringLiteral( "%1/%2/%3" ).arg( QFieldCloudUtils::localCloudDirectory(), projectId, fileName );
+        QString cloudChecksum = fileObject.value( QStringLiteral( "sha256" ) ).toString();
+        QString localChecksum = FileUtils::fileChecksum( projectFileName, QCryptographicHash::Sha256 ).toHex();
+
+        if ( cloudChecksum == localChecksum )
+          continue;
+
         int fileSize = fileObject.value( QStringLiteral( "size" ) ).toInt();
 
         mCloudProjects[index].downloadFileTransfers.insert( fileName, FileTransfer( fileName, fileSize ) );

@@ -26,6 +26,7 @@
 
 #include <qgsproject.h>
 #include <qgsvectorlayerutils.h>
+#include <qgsmessagelog.h>
 
 
 const QString DeltaFileWrapper::FormatVersion = QStringLiteral( "1.0" );
@@ -263,7 +264,7 @@ bool DeltaFileWrapper::toFile()
   {
     mErrorType = DeltaFileWrapper::IOError;
     mErrorDetails = deltaFile.errorString();
-    QgsLogger::warning( QStringLiteral( "File %1 cannot be open for writing. Reason: %2" ).arg( mFileName ).arg( mErrorDetails ) );
+    QgsMessageLog::logMessage( QStringLiteral( "File %1 cannot be open for writing. Reason: %2" ).arg( mFileName ).arg( mErrorDetails ) );
 
     return false;
   }
@@ -272,7 +273,7 @@ bool DeltaFileWrapper::toFile()
   {
     mErrorType = DeltaFileWrapper::IOError;
     mErrorDetails = deltaFile.errorString();
-    QgsLogger::warning( QStringLiteral( "Contents of the file %1 has not been written. Reason %2" ).arg( mFileName ).arg( mErrorDetails ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Contents of the file %1 has not been written. Reason %2" ).arg( mFileName ).arg( mErrorDetails ) );
     return false;
   }
 
@@ -794,7 +795,7 @@ bool DeltaFileWrapper::applyInternal( bool shouldApplyInReverse )
         vectorLayers[layerId] = nullptr;
       else
       {
-        QgsLogger::warning( QStringLiteral( "Failed to commit layer with id \"%1\", all the rest layers will be rollbacked" ).arg( layerId ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to commit layer with id \"%1\", all the rest layers will be rollbacked" ).arg( layerId ) );
         isSuccess = false;
         break;
       }
@@ -812,7 +813,7 @@ bool DeltaFileWrapper::applyInternal( bool shouldApplyInReverse )
 
       // despite the error, try to rollback all the changes so far
       if ( ! vl->rollBack() )
-        QgsLogger::warning( QStringLiteral( "Failed to rollback layer with id \"%1\"" ).arg( layerId ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to rollback layer with id \"%1\"" ).arg( layerId ) );
     }
   }
 

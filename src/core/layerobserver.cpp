@@ -57,7 +57,7 @@ bool LayerObserver::commit()
   // First make sure the current delta file is synced to the disk storage. There might be some unsynced changes.
   if ( ! mCurrentDeltaFileWrapper->toFile() )
   {
-    QgsLogger::warning( QStringLiteral( "Cannot write the current delta file: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Cannot write the current delta file: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
     return false;
   }
 
@@ -68,14 +68,14 @@ bool LayerObserver::commit()
   // Try to append the contents of the current delta file to the committed one. Very unlikely to break there.
   if ( ! mCommittedDeltaFileWrapper->append( mCurrentDeltaFileWrapper.get() ) )
   {
-    QgsLogger::warning( QStringLiteral( "Unable to append delta file wrapper contents!" ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Unable to append delta file wrapper contents!" ) );
     return false;
   }
 
   // Make sure the committed changes are synced to the disk storage.
   if ( ! mCommittedDeltaFileWrapper->toFile() )
   {
-    QgsLogger::warning( QStringLiteral( "Cannot write the committed delta file: %1" ).arg( mCommittedDeltaFileWrapper->errorString() ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Cannot write the committed delta file: %1" ).arg( mCommittedDeltaFileWrapper->errorString() ) );
     return false;
   }
 
@@ -86,7 +86,7 @@ bool LayerObserver::commit()
   // Make sure the brand new current delta file is synced to the disk storage.
   if ( ! mCurrentDeltaFileWrapper->toFile() )
   {
-    QgsLogger::warning( QStringLiteral( "Cannot write the current delta file: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Cannot write the current delta file: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
     return false;
   }
 
@@ -134,10 +134,10 @@ void LayerObserver::onHomePathChanged()
   mCommittedDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( false ) ) );
 
   if ( mCurrentDeltaFileWrapper->hasError() )
-    QgsLogger::warning( QStringLiteral( "The current delta file wrapper experienced an error: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
+    QgsMessageLog::logMessage( QStringLiteral( "The current delta file wrapper experienced an error: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
 
   if ( mCommittedDeltaFileWrapper->hasError() )
-    QgsLogger::warning( QStringLiteral( "The current delta file wrapper experienced an error: %1" ).arg( mCommittedDeltaFileWrapper->errorString() ) );
+    QgsMessageLog::logMessage( QStringLiteral( "The current delta file wrapper experienced an error: %1" ).arg( mCommittedDeltaFileWrapper->errorString() ) );
 
   emit currentDeltaFileWrapperChanged();
   emit committedDeltaFileWrapperChanged();
@@ -311,7 +311,7 @@ void LayerObserver::onEditingStopped( )
   if ( ! mCurrentDeltaFileWrapper->toFile() )
   {
     // TODO somehow indicate the user that writing failed
-    QgsLogger::warning( QStringLiteral( "Failed writing JSON file" ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Failed writing JSON file" ) );
   }
   emit layerEdited( layerId );
 }

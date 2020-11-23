@@ -605,7 +605,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
 
     if ( ! file->open() )
     {
-      QgsLogger::warning( QStringLiteral( "Failed to open temporary file for \"%1\", reason:\n%2" )
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to open temporary file for \"%1\", reason:\n%2" )
                           .arg( fileName )
                           .arg( file->errorString() ) );
 
@@ -649,13 +649,13 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       if ( rawReply->error() != QNetworkReply::NoError )
       {
         hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to download project file stored at \"%1\", reason:\n%2" ).arg( fileName, rawReply->errorString() ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to download project file stored at \"%1\", reason:\n%2" ).arg( fileName, rawReply->errorString() ) );
       }
 
       if ( ! hasError && ! file->write( rawReply->readAll() ) )
       {
         hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
       }
 
       if ( hasError )
@@ -735,7 +735,7 @@ bool QFieldCloudProjectsModel::projectMoveDownloadedFilesToPermanentStorage( con
     if ( ! hasError && ! dir.exists() && ! dir.mkpath( QStringLiteral( "." ) ) )
     {
       hasError = true;
-      QgsLogger::warning( QStringLiteral( "Failed to create directory at \"%1\"" ).arg( dir.path() ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to create directory at \"%1\"" ).arg( dir.path() ) );
     }
 
     const QString destinationFileName( dir.filePath( fileInfo.fileName() ) );
@@ -745,20 +745,20 @@ bool QFieldCloudProjectsModel::projectMoveDownloadedFilesToPermanentStorage( con
     if ( ! hasError && QFile::exists( destinationFileName ) && ! file.remove( destinationFileName ) )
     {
       hasError = true;
-      QgsLogger::warning( QStringLiteral( "Failed to remove file before overwriting stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to remove file before overwriting stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
     }
 
     if ( ! hasError && ! file.copy( destinationFileName ) )
     {
       hasError = true;
-      QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
 
       if ( ! QFile::remove( dir.filePath( fileName ) ) )
-        QgsLogger::warning( QStringLiteral( "Failed to remove partly overwritten file stored at \"%1\"" ).arg( fileName ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to remove partly overwritten file stored at \"%1\"" ).arg( fileName ) );
     }
 
     if ( ! file.remove() )
-      QgsLogger::warning( QStringLiteral( "Failed to remove temporary file \"%1\"" ).arg( fileName ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to remove temporary file \"%1\"" ).arg( fileName ) );
   }
 
   return ! hasError;
@@ -789,7 +789,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
   if ( ! mLayerObserver->commit() )
   {
-    QgsLogger::warning( QStringLiteral( "Failed to commit changes." ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Failed to commit changes." ) );
     return;
   }
 
@@ -798,7 +798,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
   if ( deltaFile->hasError() )
   {
-    QgsLogger::warning( QStringLiteral( "The delta file has an error: %1" ).arg( deltaFile->errorString() ) );
+    QgsMessageLog::logMessage( QStringLiteral( "The delta file has an error: %1" ).arg( deltaFile->errorString() ) );
     return;
   }
 
@@ -827,7 +827,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
     if ( !fileInfo.exists() )
     {
-      QgsLogger::warning( QStringLiteral( "Attachment file '%1' does not exist" ).arg( fileName ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Attachment file '%1' does not exist" ).arg( fileName ) );
       continue;
     }
 
@@ -921,7 +921,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
       deltaFile->resetId();
 
       if ( ! deltaFile->toFile() )
-        QgsLogger::warning( QStringLiteral( "Failed to reset delta file after delta push. %1" ).arg( deltaFile->errorString() ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to reset delta file after delta push. %1" ).arg( deltaFile->errorString() ) );
 
       QModelIndex idx = createIndex( index, 0 );
 
@@ -960,7 +960,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         deltaFile->resetId();
 
         if ( ! deltaFile->toFile() )
-          QgsLogger::warning( QStringLiteral( "Failed update committed delta file." ) );
+          QgsMessageLog::logMessage( QStringLiteral( "Failed update committed delta file." ) );
 
         projectCancelUpload( projectId );
         return;
@@ -973,7 +973,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         deltaFile->resetId();
 
         if ( ! deltaFile->toFile() )
-          QgsLogger::warning( QStringLiteral( "Failed to reset delta file. %1" ).arg( deltaFile->errorString() ) );
+          QgsMessageLog::logMessage( QStringLiteral( "Failed to reset delta file. %1" ).arg( deltaFile->errorString() ) );
 
         mCloudProjects[index].status = ProjectStatus::Idle;
         mCloudProjects[index].modification ^= LocalModification;
@@ -1090,7 +1090,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
     {
       mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
       mCloudProjects[index].deltaFileUploadStatusString = QStringLiteral( "Unknown status \"%1\"" ).arg( status );
-      QgsLogger::warning( mCloudProjects[index].deltaFileUploadStatusString );
+      QgsMessageLog::logMessage( mCloudProjects[index].deltaFileUploadStatusString );
     }
 
     emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole );
@@ -1193,7 +1193,7 @@ void QFieldCloudProjectsModel::layerObserverLayerEdited( const QString &layerId 
 
   if ( index == -1 || index >= mCloudProjects.size() )
   {
-    QgsLogger::warning( QStringLiteral( "Layer observer triggered `isDirtyChanged` signal incorrectly" ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Layer observer triggered `isDirtyChanged` signal incorrectly" ) );
     return;
   }
 
@@ -1474,7 +1474,7 @@ bool QFieldCloudProjectsModel::deleteGpkgShmAndWal( const QStringList &gpkgFileN
     {
       if ( ! shmFile.remove() )
       {
-        QgsLogger::warning( QStringLiteral( "Failed to remove -shm file '%1' " ).arg( shmFile.fileName() ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to remove -shm file '%1' " ).arg( shmFile.fileName() ) );
         isSuccess = false;
       }
     }
@@ -1485,7 +1485,7 @@ bool QFieldCloudProjectsModel::deleteGpkgShmAndWal( const QStringList &gpkgFileN
     {
       if ( ! walFile.remove() )
       {
-        QgsLogger::warning( QStringLiteral( "Failed to remove -wal file '%1' " ).arg( walFile.fileName() ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to remove -wal file '%1' " ).arg( walFile.fileName() ) );
         isSuccess = false;
       }
     }

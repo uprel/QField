@@ -41,6 +41,7 @@ public:
   {
     IdRole,
     DeltafileIdRole,
+    CreatedAtRole,
     UpdatedAtRole,
     StatusRole,
     OutputRole,
@@ -51,6 +52,7 @@ public:
   struct DeltaStatus {
     QUuid id;
     QUuid deltafileId;
+    QString createdAt;
     QString updatedAt;
     Status status;
     QString output;

@@ -1035,8 +1035,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
   Q_ASSERT( index >= 0 && index < mCloudProjects.size() );
 
   QModelIndex idx = createIndex( index, 0 );
-//  NetworkReply *deltaStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/deltas/%1/%2/" ).arg( mCloudProjects[index].id, mCloudProjects[index].deltaFileId ) );
-  NetworkReply *deltaStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/deltas/%1/" ).arg( mCloudProjects[index].id ) );
+  NetworkReply *deltaStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/deltas/%1/%2/" ).arg( mCloudProjects[index].id, mCloudProjects[index].deltaFileId ) );
 
   mCloudProjects[index].deltaFileUploadStatusString = QString();
 
@@ -1066,7 +1065,6 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
     mDeltaStatusListModel = new DeltaStatusListModel( doc );
 
-    qDebug() << 1111 << mDeltaStatusListModel->isValid() << mDeltaStatusListModel->allHaveFinalStatus() << mDeltaStatusListModel->errorString();
     if ( ! mDeltaStatusListModel->isValid() )
     {
       mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
@@ -1076,18 +1074,20 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
       return;
     }
 
-    qDebug() << 1112 << mDeltaStatusListModel->isValid() << mDeltaStatusListModel->allHaveFinalStatus() << mDeltaStatusListModel->errorString();
+    mCloudProjects[index].deltaFileUploadStatusString = QString();
+
     if ( ! mDeltaStatusListModel->allHaveFinalStatus() )
     {
       mCloudProjects[index].deltaFileUploadStatus = DeltaFilePendingStatus;
-      mCloudProjects[index].deltaFileUploadStatusString = QString();
       emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
       emit networkDeltaStatusChecked( projectId );
       return;
     }
 
-    // lazy for now, I will need the reference later
+    // lazy for now, but I will need the reference later
     delete mDeltaStatusListModel;
+
+    mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedStatus;
 
     emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
     emit networkDeltaStatusChecked( projectId );

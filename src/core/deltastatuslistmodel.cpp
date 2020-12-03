@@ -45,7 +45,7 @@ DeltaStatusListModel::DeltaStatusListModel( QJsonDocument doc )
     }
 
     const QJsonObject deltaObject = delta.toObject();
-    const QStringList requiredKeys({"id", "deltafile_id", "updated_at", "status", "output"});
+    const QStringList requiredKeys({"id", "deltafile_id", "created_at", "updated_at", "status", "output"});
     for ( const QString &requiredKey : requiredKeys )
     {
       if ( deltaObject.value( requiredKey ).isNull() || deltaObject.value( requiredKey ).isUndefined() )
@@ -81,6 +81,8 @@ DeltaStatusListModel::DeltaStatusListModel( QJsonDocument doc )
 
     deltaStatus.id = QUuid( deltaObject.value( QStringLiteral( "id" ) ).toString() );
     deltaStatus.deltafileId = QUuid( deltaObject.value( QStringLiteral( "deltafile_id" ) ).toString() );
+    deltaStatus.createdAt = deltaObject.value( QStringLiteral( "created_at" ) ).toString();
+    deltaStatus.updatedAt = deltaObject.value( QStringLiteral( "updated_at" ) ).toString();
 
     mIsValid = true;
     mDeltas.append( deltaStatus );
@@ -106,6 +108,8 @@ QVariant DeltaStatusListModel::data( const QModelIndex &index, int role ) const
       return mDeltas.at( index.row() ).id;
     case DeltafileIdRole:
       return mDeltas.at( index.row() ).deltafileId;
+    case CreatedAtRole:
+      return mDeltas.at( index.row() ).createdAt;
     case UpdatedAtRole:
       return mDeltas.at( index.row() ).updatedAt;
     case StatusRole:
@@ -122,6 +126,7 @@ QHash<int, QByteArray> DeltaStatusListModel::roleNames() const
   QHash<int, QByteArray> roles;
   roles[IdRole] = "Id";
   roles[DeltafileIdRole] = "DeltafileId";
+  roles[CreatedAtRole] = "CreatedAt";
   roles[UpdatedAtRole] = "UpdatedAt";
   roles[StatusRole] = "Status";
   roles[OutputRole] = "Output";

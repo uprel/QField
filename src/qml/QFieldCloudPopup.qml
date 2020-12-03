@@ -153,8 +153,6 @@ Popup {
                   case QFieldCloudProjectsModel.Uploading:
                     switch ( cloudProjectsModel.currentProjectData.UploadDeltaStatus ) {
                       case QFieldCloudProjectsModel.DeltaFileLocalStatus:
-                      case QFieldCloudProjectsModel.DeltaFilePendingStatus:
-                      case QFieldCloudProjectsModel.DeltaFileWaitingStatus:
                         return qsTr('Uploading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.UploadDeltaProgress * 100) );
                       default:
                         return qsTr('QFieldCloud is applying the latest uploaded changes.\nThis might take some time, please hold tight…')
@@ -192,8 +190,6 @@ Popup {
                     case QFieldCloudProjectsModel.Uploading:
                       switch ( cloudProjectsModel.currentProjectData.UploadDeltaStatus ) {
                         case QFieldCloudProjectsModel.DeltaFileLocalStatus:
-                        case QFieldCloudProjectsModel.DeltaFilePendingStatus:
-                        case QFieldCloudProjectsModel.DeltaFileWaitingStatus:
                           return Theme.getThemeVectorIcon('ic_cloud_upload_24dp');
                         default:
                           return Theme.getThemeVectorIcon('ic_cloud_active_24dp');

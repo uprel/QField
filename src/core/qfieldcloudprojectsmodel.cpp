@@ -18,6 +18,7 @@
 #include "qfieldcloudutils.h"
 #include "layerobserver.h"
 #include "deltafilewrapper.h"
+#include "deltastatuslistmodel.h"
 #include "fileutils.h"
 #include "qfield.h"
 
@@ -805,6 +806,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   mCloudProjects[index].status = ProjectStatus::Uploading;
   mCloudProjects[index].deltaFileId = deltaFile->id();
   mCloudProjects[index].deltaFileUploadStatus = DeltaFileLocalStatus;
+  mCloudProjects[index].deltaFileUploadStatusString = QString();
 
   mCloudProjects[index].uploadAttachments.empty();
   mCloudProjects[index].uploadAttachmentsFinished = 0;
@@ -815,7 +817,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   updateCanSyncCurrentProject();
   updateCurrentProjectChangesCount();
 
-  emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadAttachmentsProgressRole << UploadDeltaProgressRole << UploadDeltaStatusRole );
+  emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadAttachmentsProgressRole << UploadDeltaProgressRole << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
 
   // //////////
   // prepare attachment files to be uploaded
@@ -947,8 +949,6 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         Q_ASSERT( 0 );
         break;
       case DeltaFilePendingStatus:
-      case DeltaFileWaitingStatus:
-      case DeltaFileBusyStatus:
         // infinite retry, there should be one day, when we can get the status!
         QTimer::singleShot( sDelayBeforeStatusRetry, [ = ]()
         {
@@ -965,8 +965,6 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         projectCancelUpload( projectId );
         return;
       case DeltaFileAppliedStatus:
-      case DeltaFileAppliedWithConflictsStatus:
-      case DeltaFileNotAppliedStatus:
         delete networkDeltaStatusCheckedParent;
 
         deltaFile->reset();
@@ -1037,7 +1035,8 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
   Q_ASSERT( index >= 0 && index < mCloudProjects.size() );
 
   QModelIndex idx = createIndex( index, 0 );
-  NetworkReply *deltaStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/deltas/%1/%2/" ).arg( mCloudProjects[index].id, mCloudProjects[index].deltaFileId ) );
+//  NetworkReply *deltaStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/deltas/%1/%2/" ).arg( mCloudProjects[index].id, mCloudProjects[index].deltaFileId ) );
+  NetworkReply *deltaStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/deltas/%1/" ).arg( mCloudProjects[index].id ) );
 
   mCloudProjects[index].deltaFileUploadStatusString = QString();
 
@@ -1057,7 +1056,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
       // TODO this is oversimplification. e.g. 404 error is when the requested delta file id is not existant
       mCloudProjects[index].deltaFileUploadStatusString = QStringLiteral( "[HTTP%1] Networking error, please retry!" ).arg( statusCode );
 
-      emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole );
+      emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
       emit networkDeltaStatusChecked( projectId );
 
       return;
@@ -1065,35 +1064,32 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
     const QJsonDocument doc = QJsonDocument::fromJson( rawReply->readAll() );
 
-    Q_ASSERT( doc.isObject() );
+    mDeltaStatusListModel = new DeltaStatusListModel( doc );
 
-    const QString status = doc.object().value( QStringLiteral( "status" ) ).toString().toUpper();
+    qDebug() << 1111 << mDeltaStatusListModel->isValid() << mDeltaStatusListModel->allHaveFinalStatus() << mDeltaStatusListModel->errorString();
+    if ( ! mDeltaStatusListModel->isValid() )
+    {
+      mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
+      mCloudProjects[index].deltaFileUploadStatusString = mDeltaStatusListModel->errorString();
+      emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
+      emit networkDeltaStatusChecked( projectId );
+      return;
+    }
 
-    if ( status == QStringLiteral( "STATUS_APPLIED" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedStatus;
-    else if ( status == QStringLiteral( "STATUS_APPLIED_WITH_CONFLICTS" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedWithConflictsStatus;
-    else if ( status == QStringLiteral( "STATUS_NOT_APPLIED" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileNotAppliedStatus;
-    else if ( status == QStringLiteral( "STATUS_PENDING" ) )
+    qDebug() << 1112 << mDeltaStatusListModel->isValid() << mDeltaStatusListModel->allHaveFinalStatus() << mDeltaStatusListModel->errorString();
+    if ( ! mDeltaStatusListModel->allHaveFinalStatus() )
+    {
       mCloudProjects[index].deltaFileUploadStatus = DeltaFilePendingStatus;
-    else if ( status == QStringLiteral( "STATUS_WAITING" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileWaitingStatus;
-    else if ( status == QStringLiteral( "STATUS_BUSY" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileBusyStatus;
-    else if ( status == QStringLiteral( "STATUS_ERROR" ) )
-    {
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
-      mCloudProjects[index].deltaFileUploadStatusString = doc.object().value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
-    }
-    else
-    {
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
-      mCloudProjects[index].deltaFileUploadStatusString = QStringLiteral( "Unknown status \"%1\"" ).arg( status );
-      QgsMessageLog::logMessage( mCloudProjects[index].deltaFileUploadStatusString );
+      mCloudProjects[index].deltaFileUploadStatusString = QString();
+      emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
+      emit networkDeltaStatusChecked( projectId );
+      return;
     }
 
-    emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole );
+    // lazy for now, I will need the reference later
+    delete mDeltaStatusListModel;
+
+    emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
     emit networkDeltaStatusChecked( projectId );
   } );
 }
@@ -1255,6 +1251,7 @@ QHash<int, QByteArray> QFieldCloudProjectsModel::roleNames() const
   roles[UploadAttachmentsProgressRole] = "UploadAttachmentsProgress";
   roles[UploadDeltaProgressRole] = "UploadDeltaProgress";
   roles[UploadDeltaStatusRole] = "UploadDeltaStatus";
+  roles[UploadDeltaStatusStringRole] = "UploadDeltaStatusString";
   roles[LocalDeltasCountRole] = "LocalDeltasCount";
   roles[LocalPathRole] = "LocalPath";
   return roles;
@@ -1377,6 +1374,8 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
       return mCloudProjects.at( index.row() ).uploadDeltaProgress;
     case UploadDeltaStatusRole:
       return mCloudProjects.at( index.row() ).deltaFileUploadStatus;
+    case UploadDeltaStatusStringRole:
+      return mCloudProjects.at( index.row() ).deltaFileUploadStatusString;
     case LocalDeltasCountRole:
       return mCloudProjects.at( index.row() ).currentDeltasCount + mCloudProjects.at( index.row() ).committedDeltasCount;
     case LocalPathRole:

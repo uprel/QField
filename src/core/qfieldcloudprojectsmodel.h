@@ -30,6 +30,7 @@ class NetworkReply;
 class LayerObserver;
 class QgsMapLayer;
 class QgsProject;
+class DeltaStatusListModel;
 
 
 class QFieldCloudProjectsModel : public QAbstractListModel
@@ -54,6 +55,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       UploadAttachmentsProgressRole,
       UploadDeltaProgressRole,
       UploadDeltaStatusRole,
+      UploadDeltaStatusStringRole,
       LocalDeltasCountRole,
       LocalPathRole
     };
@@ -111,11 +113,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       DeltaFileErrorStatus,
       DeltaFileLocalStatus,
       DeltaFilePendingStatus,
-      DeltaFileWaitingStatus,
-      DeltaFileBusyStatus,
       DeltaFileAppliedStatus,
-      DeltaFileAppliedWithConflictsStatus,
-      DeltaFileNotAppliedStatus,
     };
 
     Q_ENUM( DeltaFileStatus )
@@ -356,6 +354,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     bool mCanCommitCurrentProject = false;
     bool mCanSyncCurrentProject = false;
+    DeltaStatusListModel *mDeltaStatusListModel = nullptr;
 
     void projectCancelUpload( const QString &projectId );
     void projectUploadAttachments( const QString &projectId );

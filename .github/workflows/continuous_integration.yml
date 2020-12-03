@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - publish_master
       - release-**
   pull_request:
     branches:
@@ -45,6 +46,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       TX_TOKEN: ${{ secrets.TX_TOKEN }}
+      NIGHTLY_PACKAGE_NAME: ${{ secrets.NIGHTLY_PACKAGE_NAME }}
     strategy:
       matrix:
         arch: [armv7, arm64_v8a, x86, x86_64]
@@ -102,7 +104,7 @@ jobs:
   deploy_to_playstore:
     runs-on: ubuntu-20.04
     needs: build
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/publish_master' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -122,6 +124,8 @@ jobs:
       - name: Upload to Google Play Store
         run: |
           pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib oauth2client
+
+          export APP_PACKAGE_NAME="${NIGHTLY_PACKAGE_NAME:-qfield_dev}"
           
           ./scripts/basic_upload_apks_service_account.py ${APP_PACKAGE_NAME} beta "Update from commit ${GITHUB_SHA}" \
               qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-arm64_v8a.apk \
@@ -130,8 +134,7 @@ jobs:
               qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-x86.apk
         env:
           GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-          APP_PACKAGE_NAME: ch.opengis.qfield_dev
-
+          NIGHTLY_PACKAGE_NAME: ${{ secrets.NIGHTLY_PACKAGE_NAME }}
 
   comment_pr:
     runs-on: ubuntu-20.04

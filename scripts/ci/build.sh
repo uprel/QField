@@ -25,13 +25,19 @@ elif [[ ${CI_PULL_REQUEST} = false ]]; then
   NUMBER_OF_COMMITS=$(curl -I -k "https://api.github.com/repos/opengisch/QField/commits?per_page=1&sha=${CURRENT_COMMIT}" | sed -n '/^[Ll]ink:/ s/.*"next".*page=\([0-9]*\).*"last".*/\1/p')
   echo "Building dev (nightly)"
   export APP_NAME="QField Dev"
-  export APP_PACKAGE_NAME="qfield_dev"
+  CUSTOM_APP_PACKAGE_NAME=$(echo ${NIGHTLY_PACKAGE_NAME} | awk '{print $NF}' FS=.)
+  export APP_PACKAGE_NAME="${CUSTOM_APP_PACKAGE_NAME:-qfield_dev}"
   export APP_ICON="qfield_logo_beta"
   export APP_VERSION=""
   # take 0 + (1930000 + number of masters commits) + arch
   # 01930000 has no meaning - it's just where we had to start
   # max = 2100000000
-  export APP_VERSION_CODE=0$((1930000+NUMBER_OF_COMMITS))${ARCH_NUMBER}
+  if [[ -n $CUSTOM_APP_PACKAGE_NAME ]]; then
+    ARCH_BUILD_NUMBER=$(arch_to_build_number ${ARCH})
+    export APP_VERSION_CODE="${GITHUB_RUN_NUMBER}${ARCH_BUILD_NUMBER}"
+  else
+    export APP_VERSION_CODE=0$((1930000+NUMBER_OF_COMMITS))${ARCH_NUMBER}
+  fi
   export APP_VERSION_STR="${LAST_TAG}-dev (commit ${CURRENT_COMMIT})"
 
 else

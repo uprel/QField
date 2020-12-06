@@ -18,6 +18,7 @@
 
 #include "qgsnetworkaccessmanager.h"
 #include "qgsgpkgflusher.h"
+#include "deltastatuslistmodel.h"
 
 #include <QAbstractListModel>
 #include <QNetworkReply>
@@ -30,7 +31,6 @@ class NetworkReply;
 class LayerObserver;
 class QgsMapLayer;
 class QgsProject;
-class DeltaStatusListModel;
 
 
 class QFieldCloudProjectsModel : public QAbstractListModel
@@ -354,7 +354,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     bool mCanCommitCurrentProject = false;
     bool mCanSyncCurrentProject = false;
-    DeltaStatusListModel *mDeltaStatusListModel = nullptr;
+    std::unique_ptr<DeltaStatusListModel> mDeltaStatusListModel;
 
     void projectCancelUpload( const QString &projectId );
     void projectUploadAttachments( const QString &projectId );

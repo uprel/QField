@@ -18,7 +18,6 @@
 #include "qfieldcloudutils.h"
 #include "layerobserver.h"
 #include "deltafilewrapper.h"
-#include "deltastatuslistmodel.h"
 #include "fileutils.h"
 #include "qfield.h"
 
@@ -1063,7 +1062,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
     const QJsonDocument doc = QJsonDocument::fromJson( rawReply->readAll() );
 
-    mDeltaStatusListModel = new DeltaStatusListModel( doc );
+    mDeltaStatusListModel.reset( new DeltaStatusListModel( doc ) );
 
     if ( ! mDeltaStatusListModel->isValid() )
     {
@@ -1084,8 +1083,8 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
       return;
     }
 
-    // lazy for now, but I will need the reference later
-    delete mDeltaStatusListModel;
+    // probably reseting the uniq ptr is not needed here, but it will be clear when the Delta Status UI is created
+    mDeltaStatusListModel.reset();
 
     mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedStatus;
 

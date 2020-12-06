@@ -144,10 +144,10 @@ jobs:
         id: vars
         run: |
           ./scripts/ci/env_gh.sh
-      - uses: mshick/add-pr-comment@v1
+      - name: Comment PR
+        uses: thollander/actions-comment-pull-request@master
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-repeats: true
+          GITHUB_TOKEN: ${{ secrets.FAIRY_TOKEN }}
           message: |
             🎉 Ta-daaa, freshly created APKs are available for ${{ github.event.pull_request.head.sha }}:
               - [**arm64_v8a**](https://sos-ch-dk-2.exo.io/qfieldapks/ci-builds/qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-arm64_v8a.apk)

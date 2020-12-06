@@ -57,6 +57,7 @@
 #include <qgsfieldconstraints.h>
 #include <qgsmaplayer.h>
 #include <qgsvectorlayereditbuffer.h>
+#include <qgsexpressionfunction.h>
 
 #include "qgsquickmapsettings.h"
 #include "qgsquickmapcanvasmap.h"
@@ -109,6 +110,7 @@
 #include "expressionevaluator.h"
 #include "stringutils.h"
 #include "urlutils.h"
+#include "changelogcontents.h"
 #include "qfieldcloudconnection.h"
 #include "qfieldcloudprojectsmodel.h"
 #include "qfieldcloudutils.h"
@@ -340,6 +342,7 @@ void QgisMobileapp::initDeclarative()
   qmlRegisterType<FeatureCheckListModel>( "org.qgis", 1, 0, "FeatureCheckListModel" );
   qmlRegisterType<GeometryEditorsModel>( "org.qfield", 1, 0, "GeometryEditorsModel" );
   qmlRegisterType<ExpressionEvaluator>( "org.qfield", 1, 0, "ExpressionEvaluator" );
+  qmlRegisterType<ChangelogContents>( "org.qfield", 1, 0, "ChangelogContents" );
   qmlRegisterType<QFieldCloudConnection>( "org.qfield", 1, 0, "QFieldCloudConnection" );
   qmlRegisterType<QFieldCloudProjectsModel>( "org.qfield", 1, 0, "QFieldCloudProjectsModel" );
   REGISTER_SINGLETON( "org.qfield", GeometryEditorsModel, "GeometryEditorsModelSingleton" );

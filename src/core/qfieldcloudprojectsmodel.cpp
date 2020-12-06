@@ -1062,7 +1062,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
     const QJsonDocument doc = QJsonDocument::fromJson( rawReply->readAll() );
 
-    mDeltaStatusListModel.reset( new DeltaStatusListModel( doc ) );
+    mDeltaStatusListModel = std::make_unique<DeltaStatusListModel>( doc );
 
     if ( ! mDeltaStatusListModel->isValid() )
     {

@@ -150,7 +150,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     int currentProjectChangesCount() const;
 
-    Q_INVOKABLE QVariantMap getProjectData( const QString projectId ) const;
+    Q_INVOKABLE QVariantMap getProjectData( const QString &projectId ) const;
     Q_INVOKABLE void refreshProjectsList();
     Q_INVOKABLE void downloadProject( const QString &projectId );
     Q_INVOKABLE void uploadProject( const QString &projectId, const bool shouldDownloadUpdates );

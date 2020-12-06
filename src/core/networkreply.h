@@ -73,7 +73,7 @@ class NetworkReply : public QObject
      * Reimplements QNetworkReply::ignoreSslErrors.
      * @param error a list of error to be ignored.
      */
-    void ignoreSslErrors( QList<QSslError> errors );
+    void ignoreSslErrors( const QList<QSslError> &errors );
 
 
     /**

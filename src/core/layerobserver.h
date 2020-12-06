@@ -45,7 +45,7 @@ class LayerObserver : public QObject
      *
      * @param project
      */
-    LayerObserver( const QgsProject *project );
+    explicit LayerObserver( const QgsProject *project );
 
 
     /**
@@ -108,7 +108,7 @@ class LayerObserver : public QObject
      *
      * @param layers layers added
      */
-    void onLayersAdded( const QList<QgsMapLayer *> layers );
+    void onLayersAdded( const QList<QgsMapLayer *> &layers );
 
 
     /**

@@ -210,7 +210,7 @@ class DeltaFileWrapper : public QObject
      *
      * @return QString an empty string
      */
-    Q_INVOKABLE QString toFileForUpload( const QString &fileName = QString() ) const;
+    Q_INVOKABLE QString toFileForUpload( const QString &outFileName = QString() ) const;
 
 
     /**

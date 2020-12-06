@@ -218,7 +218,7 @@ QString DeltaFileWrapper::errorString() const
 {
   const QHash<DeltaFileWrapper::ErrorTypes, QString> errorMessages(
   {
-    {DeltaFileWrapper::NoError, QStringLiteral( "" )},
+    {DeltaFileWrapper::NoError, QString()},
     {DeltaFileWrapper::LockError, QStringLiteral( "Delta file is already opened" )},
     {DeltaFileWrapper::NotCloudProjectError, QStringLiteral( "The current project is not a cloud project" ) },
     {DeltaFileWrapper::IOError, QStringLiteral( "Cannot open file for read and write" ) },
@@ -491,6 +491,7 @@ void DeltaFileWrapper::addPatch( const QString &layerId, const QString &localPkA
   {
     const QVariant oldVal = oldAttrs.at( idx );
     const QVariant newVal = newAttrs.at( idx );
+    // cppcheck-suppress  variableScope unreadVariable
     int attachmentFieldsDiffed = 0;
 
     if ( newVal != oldVal )

@@ -54,7 +54,7 @@ QNetworkReply *NetworkReply::reply() const
 }
 
 
-void NetworkReply::ignoreSslErrors( QList<QSslError> errors )
+void NetworkReply::ignoreSslErrors( const QList<QSslError> &errors )
 {
   mExpectedSslErrors = errors;
 }

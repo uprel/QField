@@ -158,7 +158,7 @@ QVariantMap QFieldCloudProjectsModel::currentProjectData() const
   return getProjectData( mCurrentProjectId );
 }
 
-QVariantMap QFieldCloudProjectsModel::getProjectData( const QString projectId ) const
+QVariantMap QFieldCloudProjectsModel::getProjectData( const QString &projectId ) const
 {
   QVariantMap data;
 
@@ -633,7 +633,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
 
       bool hasError = false;
 
-      if ( ! hasError && rawReply->error() != QNetworkReply::NoError )
+      if ( rawReply->error() != QNetworkReply::NoError )
       {
         hasError = true;
         QgsLogger::warning( QStringLiteral( "Failed to download project file stored at \"%1\", reason:\n%2" ).arg( fileName, rawReply->errorString() ) );

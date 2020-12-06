@@ -40,7 +40,7 @@ namespace qfield
   class asKeyValueRange
   {
     public:
-      asKeyValueRange( T &data )
+      explicit asKeyValueRange( T &data )
         : mData{data}
       {
       }

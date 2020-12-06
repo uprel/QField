@@ -139,7 +139,7 @@ void LayerObserver::onHomePathChanged()
 }
 
 
-void LayerObserver::onLayersAdded( const QList<QgsMapLayer *> layers )
+void LayerObserver::onLayersAdded( const QList<QgsMapLayer *> &layers )
 {
   Q_UNUSED( layers );
   addLayerListeners();

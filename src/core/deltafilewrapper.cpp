@@ -491,8 +491,6 @@ void DeltaFileWrapper::addPatch( const QString &layerId, const QString &localPkA
   {
     const QVariant oldVal = oldAttrs.at( idx );
     const QVariant newVal = newAttrs.at( idx );
-    // cppcheck-suppress  variableScope unreadVariable
-    int attachmentFieldsDiffed = 0;
 
     if ( newVal != oldVal )
     {
@@ -523,20 +521,8 @@ void DeltaFileWrapper::addPatch( const QString &layerId, const QString &localPkA
           const QJsonValue newFileChecksumJson = newFileChecksum.isEmpty() ? QJsonValue::Null : QJsonValue( QString( newFileChecksum.toHex() ) );
           tmpNewFileChecksums.insert( newFullFileName, newFileChecksumJson );
         }
-
-        attachmentFieldsDiffed++;
       }
     }
-#  if defined(QT_NO_DEBUG) && !defined(QT_FORCE_ASSERTS)
-    else
-    {
-      const QString name = fields.at( idx ).name();
-      if ( attachmentFieldsList.contains( name ) )
-        attachmentFieldsDiffed++;
-    }
-
-    Q_ASSERT( attachmentFieldsDiffed == attachmentFieldsList.size() );
-#  endif
   }
 
   // if features are completely equal, there is no need to change the JSON

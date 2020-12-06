@@ -22,6 +22,7 @@
 
 #include <proj.h>
 
+#include <QFontDatabase>
 #include <QStandardPaths>
 #include <QtQml/QQmlEngine>
 #include <QtQml/QQmlContext>
@@ -140,12 +141,24 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
   handler.reset( mAuthRequestHandler );
   QgsNetworkAccessManager::instance()->setAuthHandler( std::move( handler ) );
 
-  //set localized data paths
   if ( !PlatformUtilities::instance()->qfieldDataDir().isEmpty() )
   {
+    //set localized data paths
     QStringList localizedDataPaths;
     localizedDataPaths << PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "basemaps/" );
     QgsApplication::instance()->localizedDataPathRegistry()->setPaths( localizedDataPaths );
+
+    // set fonts
+    const QString fontsPath  = PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "fonts/" );
+    QDir fontsDir( fontsPath );
+    if ( fontsDir.exists() )
+    {
+      const QStringList fonts = fontsDir.entryList( QStringList() << "*.ttf" << "*.TTF" << "*.otf" << "*.OTF", QDir::Files );
+      for ( auto font : fonts )
+      {
+        QFontDatabase::addApplicationFont( fontsPath + font );
+      }
+    }
   }
 
   QFontDatabase::addApplicationFont( ":/fonts/Cadastra-Bold.ttf" );
@@ -205,19 +218,6 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
     delete [] newPaths;
 
     setenv( "PGSYSCONFDIR", PlatformUtilities::instance()->qfieldDataDir().toUtf8(), true );
-  }
-
-  QSettings settings;
-  const bool firstRunFlag = settings.value( QStringLiteral( "/QField/FirstRunFlag" ), QString() ).toString().isEmpty();
-  if ( firstRunFlag && !PlatformUtilities::instance()->packagePath().isEmpty() )
-  {
-    QList<QPair<QString, QString>> projects;
-    QString path = PlatformUtilities::instance()->packagePath();
-    path.chop( 6 ); // remove /share/ from the path
-    projects << qMakePair( QStringLiteral( "Simple Bee Farming Demo" ), path  + QStringLiteral( "/resources/demo_projects/simple_bee_farming.qgs" ) )
-             << qMakePair( QStringLiteral( "Advanced Bee Farming Demo" ), path  + QStringLiteral( "/resources/demo_projects/advanced_bee_farming.qgs" ) )
-             << qMakePair( QStringLiteral( "Live QField Users Survey Demo" ), path  + QStringLiteral( "/resources/demo_projects/live_qfield_users_survey.qgs" ) );
-    saveRecentProjects( projects );
   }
 
   PlatformUtilities::instance()->setScreenLockPermission( false );

@@ -791,7 +791,7 @@ bool DeltaFileWrapper::applyDeltasOnLayers( QHash<QString, QgsVectorLayer *> &ve
     const QVariantMap delta = deltaJson.toObject().toVariantMap();
     const QString layerId = delta.value( QStringLiteral( "layerId" ) ).toString();
     const QString tmpDeltaFid = delta.value( QStringLiteral( "tmpFid" ) ).toString();
-    const QStringList attachmentFieldNamesList = attachmentFieldNames( mProject, layerId );
+//    const QStringList attachmentFieldNamesList = attachmentFieldNames( mProject, layerId );
     const QgsFields fields = vectorLayers[layerId]->fields();
     const QPair<int, QString> pkAttrPair = getLocalPkAttribute( vectorLayers[layerId] );
 
@@ -848,11 +848,11 @@ bool DeltaFileWrapper::applyDeltasOnLayers( QHash<QString, QgsVectorLayer *> &ve
       for ( auto [ attrName, attrValue ] : qfield::asKeyValueRange( attributes ) )
         qgsAttributeMap.insert( fields.indexFromName( attrName ), attrValue );
 
-      QgsFeature f = QgsVectorLayerUtils::createFeature( vectorLayers[layerId], geom, qgsAttributeMap );
+      QgsFeature createdFeature = QgsVectorLayerUtils::createFeature( vectorLayers[layerId], geom, qgsAttributeMap );
 
-      Q_ASSERT( f.isValid() );
+      Q_ASSERT( createdFeature.isValid() );
 
-      if ( ! vectorLayers[layerId]->addFeature( f ) )
+      if ( ! vectorLayers[layerId]->addFeature( createdFeature ) )
         return false;
     }
     else if ( method == QStringLiteral( "delete" ) )

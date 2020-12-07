@@ -127,7 +127,7 @@ jobs:
 
           export APP_PACKAGE_NAME="${NIGHTLY_PACKAGE_NAME:-qfield_dev}"
           
-          ./scripts/basic_upload_apks_service_account.py ${APP_PACKAGE_NAME} beta "Update from commit ${GITHUB_SHA}" \
+          ./scripts/basic_upload_apks_service_account.py ${APP_PACKAGE_NAME} ${NIGHTLY_TRACK:-beta} "Update from commit ${GITHUB_SHA}" \
               qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-arm64_v8a.apk \
               qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-armv7.apk \
               qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-x86_64.apk \
@@ -135,6 +135,7 @@ jobs:
         env:
           GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           NIGHTLY_PACKAGE_NAME: ${{ secrets.NIGHTLY_PACKAGE_NAME }}
+          NIGHTLY_TRACK: ${{ secrets.NIGHTLY_TRACK }}
 
   comment_pr:
     runs-on: ubuntu-20.04

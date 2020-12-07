@@ -45,6 +45,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       TX_TOKEN: ${{ secrets.TX_TOKEN }}
+      NIGHTLY_PACKAGE_NAME: ${{ secrets.NIGHTLY_PACKAGE_NAME }}
     strategy:
       matrix:
         arch: [armv7, arm64_v8a, x86, x86_64]
@@ -84,12 +85,12 @@ jobs:
           ./scripts/ci/build.sh
 
       - name: 🍺 Deploy
-        run: |
-          sudo apt install -y s3cmd
-          ./scripts/ci/upload_artifacts.sh
         env:
           S3CFG: ${{ secrets.S3CFG }}
           ARCH: ${{ matrix.arch }}
+        run: |
+          sudo apt install -y s3cmd
+          ./scripts/ci/upload_artifacts.sh
 
       - name: Upload release assets
         uses: AButler/upload-release-assets@v2.0
@@ -120,18 +121,20 @@ jobs:
           wget https://sos-ch-dk-2.exo.io/qfieldapks/ci-builds/qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-x86.apk
 
       - name: Upload to Google Play Store
+        env:
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          NIGHTLY_PACKAGE_NAME: ${{ secrets.NIGHTLY_PACKAGE_NAME }}
+          NIGHTLY_TRACK: ${{ secrets.NIGHTLY_TRACK }}
         run: |
           pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib oauth2client
+
+          export APP_PACKAGE_NAME="${NIGHTLY_PACKAGE_NAME:-qfield_dev}"
           
-          ./scripts/basic_upload_apks_service_account.py ${APP_PACKAGE_NAME} beta "Update from commit ${GITHUB_SHA}" \
+          ./scripts/basic_upload_apks_service_account.py ${APP_PACKAGE_NAME} ${NIGHTLY_TRACK:-beta} "Update from commit ${GITHUB_SHA}" \
               qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-arm64_v8a.apk \
               qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-armv7.apk \
               qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-x86_64.apk \
               qfield-dev-${{ steps.vars.outputs.CI_UPLOAD_ARTIFACT_ID}}-${{ steps.vars.outputs.CI_COMMIT }}-x86.apk
-        env:
-          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-          APP_PACKAGE_NAME: ch.opengis.qfield_dev
-
 
   comment_pr:
     runs-on: ubuntu-20.04

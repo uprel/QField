@@ -17,10 +17,15 @@
 #include <qgsapplication.h>
 #include <QDir>
 #include <QString>
+#include "qgsmessagelog.h"
+
+// NOTE directly setting does not work QgsApplication::qgisSettingsDirPath();
+QString QFieldCloudUtils::sQgisSettingsDirPath = QString();
 
 const QString QFieldCloudUtils::localCloudDirectory()
 {
-  return QDir::cleanPath( QgsApplication::qgisSettingsDirPath() ) + QStringLiteral( "/cloud_projects" );
+  const QString qgisSettingsDirPath = sQgisSettingsDirPath.isNull() ? QgsApplication::qgisSettingsDirPath() : sQgisSettingsDirPath;
+  return QDir::cleanPath( qgisSettingsDirPath ) + QStringLiteral( "/cloud_projects" );
 }
 
 const QString QFieldCloudUtils::localProjectFilePath( const QString &projectId )
@@ -52,12 +57,20 @@ const QString QFieldCloudUtils::getProjectId( const QgsProject *project )
 {
   Q_ASSERT( project );
 
-  return project->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
+  QFileInfo fi( project->fileName() );
+  if ( project->fileName().startsWith( localCloudDirectory() ) )
+    return fi.dir().dirName();
+
+  return QString();
 }
 
 const QString QFieldCloudUtils::getProjectId( QgsProject *project )
 {
   Q_ASSERT( project );
 
-  return project->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) );
+  QFileInfo fi( project->fileName() );
+  if ( project->fileName().startsWith( localCloudDirectory() ) )
+    return fi.dir().dirName();
+
+  return QString();
 }

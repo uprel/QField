@@ -226,7 +226,14 @@ Page {
                                     case QFieldCloudProjectsModel.ProjectStatus.Idle:
                                       break
                                     case QFieldCloudProjectsModel.ProjectStatus.Downloading:
-                                      status = qsTr( 'Downloading, %1% fetched…' ).arg( Math.round(DownloadProgress * 100) )
+                                      switch (DownloadJobStatus) {
+                                        case QFieldCloudProjectsModel.DownloadJobCreatedStatus:
+                                          status = qsTr( 'Downloading, %1% fetched…' ).arg( Math.round(DownloadProgress * 100) )
+                                          break;
+                                        default:
+                                          status = qsTr('QFieldCloud is preparing the latest data just for you. This might take some time, please hold tight…')
+                                          break;
+                                      }
                                       break
                                     case QFieldCloudProjectsModel.ProjectStatus.Uploading:
                                       status = qsTr( 'Uploading…' )
@@ -262,7 +269,9 @@ Page {
                                     }
                                   }
 
-                                  return '%1 (%2)'.arg(Description).arg(status)
+                                  var localChanges = ( LocalDeltasCount > 0 ) ? qsTr('Has changes. ') : ''
+
+                                  return '%1 (%2%3)'.arg(Description).arg(localChanges).arg(status)
                                 }
                               }
                               visible: text != ""

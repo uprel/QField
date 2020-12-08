@@ -229,6 +229,20 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
   mMapCanvas = rootObjects().first()->findChild<QgsQuickMapCanvasMap *>();
   mMapCanvas->mapSettings()->setProject( mProject );
 
+  QFieldCloudProjectsModel *qFieldCloudProjectsModel = rootObjects().first()->findChild<QFieldCloudProjectsModel *>();
+
+  connect( qFieldCloudProjectsModel, &QFieldCloudProjectsModel::projectDownloaded, this, [ = ] ( const QString &projectId, const bool hasError, const QString &projectName )
+  {
+    Q_UNUSED( projectName );
+    if ( ! hasError )
+    {
+      if ( projectId == QFieldCloudUtils::getProjectId( mProject ) )
+      {
+        reloadProjectFile( mProject->fileName() );
+      }
+    }
+  } );
+
   mFlatLayerTree->layerTreeModel()->setLegendMapViewData( mMapCanvas->mapSettings()->mapSettings().mapUnitsPerPixel(),
       static_cast< int >( std::round( mMapCanvas->mapSettings()->outputDpi() ) ), mMapCanvas->mapSettings()->mapSettings().scale() );
 
@@ -475,11 +489,6 @@ void QgisMobileapp::onReadProject( const QDomDocument &doc )
     // Overwrite the title to match what is used in QField Cloud
     const QString projectId = fi.dir().dirName();
     title = QSettings().value( QStringLiteral( "QFieldCloud/projects/%1/name" ).arg( projectId ), fi.fileName() ).toString();
-
-    if ( mProject->readEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ) ).isEmpty()
-         && ! mProject->writeEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ), projectId )
-         && ! mProject->write() )
-      QgsLogger::warning( "Unable to set cloudProjectId to the project" );
   }
   else
   {

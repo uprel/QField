@@ -18,6 +18,7 @@
 #include "qfieldcloudutils.h"
 #include "layerobserver.h"
 #include "deltafilewrapper.h"
+#include "fileutils.h"
 #include "qfield.h"
 
 #include <qgis.h>
@@ -37,7 +38,8 @@
 #include <QSettings>
 #include <QDebug>
 
-QFieldCloudProjectsModel::QFieldCloudProjectsModel()
+QFieldCloudProjectsModel::QFieldCloudProjectsModel() :
+  mProject( QgsProject::instance() )
 {
   QJsonArray projects;
   reload( projects );
@@ -76,6 +78,7 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel()
   connect( this, &QFieldCloudProjectsModel::dataChanged, this, [ = ]( const QModelIndex & topLeft, const QModelIndex & bottomRight, const QVector<int> &roles )
   {
     Q_UNUSED( bottomRight );
+    Q_UNUSED( roles );
 
     const int index = findProject( mCurrentProjectId );
 
@@ -426,6 +429,8 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
     // TODO probably better idea to get the status from downloadJson body
     mCloudProjects[index].downloadJobStatus = DownloadJobPendingStatus;
 
+    emit dataChanged( idx, idx, QVector<int>() << DownloadJobStatusRole );
+
     projectGetDownloadStatus( projectId );
   } );
 
@@ -502,6 +507,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
       // TODO this is oversimplification. e.g. 404 error is when the requested export id is not existent
       mCloudProjects[index].downloadJobStatusString = QStringLiteral( "[HTTP%1] Networking error, please retry!" ).arg( statusCode );
 
+      emit dataChanged( idx, idx, QVector<int>() << DownloadJobStatusRole );
       emit networkDownloadStatusChecked( projectId );
 
       return;
@@ -528,6 +534,13 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
       {
         QJsonObject fileObject = file.toObject();
         QString fileName = fileObject.value( QStringLiteral( "name" ) ).toString();
+        QString projectFileName = QStringLiteral( "%1/%2/%3" ).arg( QFieldCloudUtils::localCloudDirectory(), projectId, fileName );
+        QString cloudChecksum = fileObject.value( QStringLiteral( "sha256" ) ).toString();
+        QString localChecksum = FileUtils::fileChecksum( projectFileName, QCryptographicHash::Sha256 ).toHex();
+
+        if ( cloudChecksum == localChecksum )
+          continue;
+
         int fileSize = fileObject.value( QStringLiteral( "size" ) ).toInt();
 
         mCloudProjects[index].downloadFileTransfers.insert( fileName, FileTransfer( fileName, fileSize ) );
@@ -541,7 +554,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
       mCloudProjects[index].downloadJobStatus = DownloadJobErrorStatus;
       mCloudProjects[index].downloadJobStatusString = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
 
-      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadErrorStatus );
+      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadJobStatusRole << DownloadErrorStatus );
     }
     else
     {
@@ -550,7 +563,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
       mCloudProjects[index].downloadJobStatus = DownloadJobErrorStatus;
       mCloudProjects[index].downloadJobStatusString = QStringLiteral( "Unknown status \"%1\"" ).arg( status );
 
-      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadErrorStatus );
+      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadJobStatusRole << DownloadErrorStatus );
     }
 
     emit networkDownloadStatusChecked( projectId );
@@ -592,7 +605,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
 
     if ( ! file->open() )
     {
-      QgsLogger::warning( QStringLiteral( "Failed to open temporary file for \"%1\", reason:\n%2" )
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to open temporary file for \"%1\", reason:\n%2" )
                           .arg( fileName )
                           .arg( file->errorString() ) );
 
@@ -636,13 +649,13 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       if ( rawReply->error() != QNetworkReply::NoError )
       {
         hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to download project file stored at \"%1\", reason:\n%2" ).arg( fileName, rawReply->errorString() ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to download project file stored at \"%1\", reason:\n%2" ).arg( fileName, rawReply->errorString() ) );
       }
 
       if ( ! hasError && ! file->write( rawReply->readAll() ) )
       {
         hasError = true;
-        QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
       }
 
       if ( hasError )
@@ -658,9 +671,24 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       {
         if ( ! hasError )
         {
+          const QStringList unprefixedGpkgFileNames = filterGpkgFileNames( mCloudProjects[index].downloadFileTransfers.keys() );
+          const QStringList gpkgFileNames = projectFileNames( mProject->homePath(), unprefixedGpkgFileNames );
+          QString projectFileName = mProject->fileName();
+          mProject->setFileName( QString() );
+
+          for ( const QString &fileName : gpkgFileNames )
+            mGpkgFlusher->stop( fileName );
+
           // move the files from their temporary location to their permanent one
           if ( ! projectMoveDownloadedFilesToPermanentStorage( projectId ) )
             mCloudProjects[index].errorStatus = DownloadErrorStatus;
+
+          deleteGpkgShmAndWal( gpkgFileNames );
+
+          for ( const QString &fileName : gpkgFileNames )
+            mGpkgFlusher->start( fileName );
+
+          mProject->setFileName( projectFileName );
         }
 
         for ( const QString &fileName : fileNames )
@@ -707,7 +735,7 @@ bool QFieldCloudProjectsModel::projectMoveDownloadedFilesToPermanentStorage( con
     if ( ! hasError && ! dir.exists() && ! dir.mkpath( QStringLiteral( "." ) ) )
     {
       hasError = true;
-      QgsLogger::warning( QStringLiteral( "Failed to create directory at \"%1\"" ).arg( dir.path() ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to create directory at \"%1\"" ).arg( dir.path() ) );
     }
 
     const QString destinationFileName( dir.filePath( fileInfo.fileName() ) );
@@ -717,20 +745,20 @@ bool QFieldCloudProjectsModel::projectMoveDownloadedFilesToPermanentStorage( con
     if ( ! hasError && QFile::exists( destinationFileName ) && ! file.remove( destinationFileName ) )
     {
       hasError = true;
-      QgsLogger::warning( QStringLiteral( "Failed to remove file before overwriting stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to remove file before overwriting stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
     }
 
     if ( ! hasError && ! file.copy( destinationFileName ) )
     {
       hasError = true;
-      QgsLogger::warning( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file.errorString() ) );
 
       if ( ! QFile::remove( dir.filePath( fileName ) ) )
-        QgsLogger::warning( QStringLiteral( "Failed to remove partly overwritten file stored at \"%1\"" ).arg( fileName ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to remove partly overwritten file stored at \"%1\"" ).arg( fileName ) );
     }
 
     if ( ! file.remove() )
-      QgsLogger::warning( QStringLiteral( "Failed to remove temporary file \"%1\"" ).arg( fileName ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to remove temporary file \"%1\"" ).arg( fileName ) );
   }
 
   return ! hasError;
@@ -761,7 +789,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
   if ( ! mLayerObserver->commit() )
   {
-    QgsLogger::warning( QStringLiteral( "Failed to commit changes." ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Failed to commit changes." ) );
     return;
   }
 
@@ -770,13 +798,14 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
   if ( deltaFile->hasError() )
   {
-    QgsLogger::warning( QStringLiteral( "The delta file has an error: %1" ).arg( deltaFile->errorString() ) );
+    QgsMessageLog::logMessage( QStringLiteral( "The delta file has an error: %1" ).arg( deltaFile->errorString() ) );
     return;
   }
 
   mCloudProjects[index].status = ProjectStatus::Uploading;
   mCloudProjects[index].deltaFileId = deltaFile->id();
   mCloudProjects[index].deltaFileUploadStatus = DeltaFileLocalStatus;
+  mCloudProjects[index].deltaFileUploadStatusString = QString();
 
   mCloudProjects[index].uploadAttachments.empty();
   mCloudProjects[index].uploadAttachmentsFinished = 0;
@@ -787,7 +816,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   updateCanSyncCurrentProject();
   updateCurrentProjectChangesCount();
 
-  emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadProgressRole );
+  emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadAttachmentsProgressRole << UploadDeltaProgressRole << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
 
   // //////////
   // prepare attachment files to be uploaded
@@ -795,10 +824,15 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   const QStringList attachmentFileNames = deltaFile->attachmentFileNames().keys();
   for ( const QString &fileName : attachmentFileNames )
   {
-    const int fileSize = QFileInfo( fileName ).size();
+    QFileInfo fileInfo( fileName );
 
-    Q_ASSERT( ! fileName.isEmpty() );
-//    Q_ASSERT( fileSize > 0 );
+    if ( !fileInfo.exists() )
+    {
+      QgsMessageLog::logMessage( QStringLiteral( "Attachment file '%1' does not exist" ).arg( fileName ) );
+      continue;
+    }
+
+    const int fileSize = fileInfo.size();
 
     // ? should we also check the checksums of the files being uploaded? they are available at deltaFile->attachmentFileNames()->values()
 
@@ -811,6 +845,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   if ( deltaFileToUpload.isEmpty() )
   {
     mCloudProjects[index].status = ProjectStatus::Idle;
+    emit dataChanged( idx, idx,  QVector<int>() << StatusRole );
     return;
   }
 
@@ -824,6 +859,12 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
   Q_ASSERT( deltasCloudReply );
 
+  connect( deltasCloudReply, &NetworkReply::uploadProgress, this, [ = ]( int bytesSent, int bytesTotal )
+  {
+    mCloudProjects[index].uploadDeltaProgress = std::clamp( ( static_cast<double>( bytesSent ) / bytesTotal ), 0., 1. );
+
+    emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaProgressRole );
+  });
   connect( deltasCloudReply, &NetworkReply::finished, this, [ = ]()
   {
     QNetworkReply *deltasReply = deltasCloudReply->reply();
@@ -837,15 +878,18 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     {
       // TODO check why exactly we failed
       // maybe the project does not exist, then create it?
-      QgsMessageLog::logMessage( QStringLiteral( "Failed to upload delta file, reason:\n%1" ).arg( deltasReply->errorString() ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to upload delta file, reason:\n%1\n%2" ).arg( deltasReply->errorString(), deltasReply->readAll() ) );
 
       mCloudProjects[index].deltaFileUploadStatusString = deltasReply->errorString();
       projectCancelUpload( projectId );
       return;
     }
 
+    mCloudProjects[index].uploadDeltaProgress = 1;
     mCloudProjects[index].deltaFileUploadStatus = DeltaFilePendingStatus;
     mCloudProjects[index].deltaLayersToDownload = deltaFile->deltaLayerIds();
+
+    emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaProgressRole << UploadDeltaStatusRole );
     emit networkDeltaUploaded( projectId );
   } );
 
@@ -872,11 +916,18 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     else
     {
       mCloudProjects[index].status = ProjectStatus::Idle;
+      mCloudProjects[index].modification ^= LocalModification;
+
+      deltaFile->reset();
+      deltaFile->resetId();
+
+      if ( ! deltaFile->toFile() )
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to reset delta file after delta push. %1" ).arg( deltaFile->errorString() ) );
 
       QModelIndex idx = createIndex( index, 0 );
 
       emit dataChanged( idx, idx, QVector<int>() << StatusRole );
-      emit syncFinished( projectId, false );
+      emit pushFinished( projectId, false );
     }
   } );
 
@@ -897,8 +948,6 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         Q_ASSERT( 0 );
         break;
       case DeltaFilePendingStatus:
-      case DeltaFileWaitingStatus:
-      case DeltaFileBusyStatus:
         // infinite retry, there should be one day, when we can get the status!
         QTimer::singleShot( sDelayBeforeStatusRetry, [ = ]()
         {
@@ -910,21 +959,20 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         deltaFile->resetId();
 
         if ( ! deltaFile->toFile() )
-          QgsLogger::warning( QStringLiteral( "Failed update committed delta file." ) );
+          QgsMessageLog::logMessage( QStringLiteral( "Failed update committed delta file." ) );
 
         projectCancelUpload( projectId );
         return;
       case DeltaFileAppliedStatus:
-      case DeltaFileAppliedWithConflictsStatus:
-      case DeltaFileNotAppliedStatus:
         delete networkDeltaStatusCheckedParent;
 
         deltaFile->reset();
         deltaFile->resetId();
 
         if ( ! deltaFile->toFile() )
-          QgsLogger::warning( QStringLiteral( "Failed to reset delta file. %1" ).arg( deltaFile->errorString() ) );
+          QgsMessageLog::logMessage( QStringLiteral( "Failed to reset delta file. %1" ).arg( deltaFile->errorString() ) );
 
+        mCloudProjects[index].status = ProjectStatus::Idle;
         mCloudProjects[index].modification ^= LocalModification;
         mCloudProjects[index].modification |= RemoteModification;
 
@@ -937,11 +985,10 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         }
         else
         {
-          mCloudProjects[index].status = ProjectStatus::Idle;
           QModelIndex idx = createIndex( index, 0 );
           emit dataChanged( idx, idx, QVector<int>() << StatusRole );
 
-          emit syncFinished( projectId, false );
+          emit pushFinished( projectId, false );
         }
     }
   } );
@@ -986,6 +1033,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
   Q_ASSERT( index >= 0 && index < mCloudProjects.size() );
 
+  QModelIndex idx = createIndex( index, 0 );
   NetworkReply *deltaStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/deltas/%1/%2/" ).arg( mCloudProjects[index].id, mCloudProjects[index].deltaFileId ) );
 
   mCloudProjects[index].deltaFileUploadStatusString = QString();
@@ -1006,6 +1054,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
       // TODO this is oversimplification. e.g. 404 error is when the requested delta file id is not existant
       mCloudProjects[index].deltaFileUploadStatusString = QStringLiteral( "[HTTP%1] Networking error, please retry!" ).arg( statusCode );
 
+      emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
       emit networkDeltaStatusChecked( projectId );
 
       return;
@@ -1013,34 +1062,33 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
     const QJsonDocument doc = QJsonDocument::fromJson( rawReply->readAll() );
 
-    Q_ASSERT( doc.isObject() );
+    mDeltaStatusListModel = std::make_unique<DeltaStatusListModel>( doc );
 
-    const QString status = doc.object().value( QStringLiteral( "status" ) ).toString().toUpper();
+    if ( ! mDeltaStatusListModel->isValid() )
+    {
+      mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
+      mCloudProjects[index].deltaFileUploadStatusString = mDeltaStatusListModel->errorString();
+      emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
+      emit networkDeltaStatusChecked( projectId );
+      return;
+    }
 
-    if ( status == QStringLiteral( "STATUS_APPLIED" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedStatus;
-    else if ( status == QStringLiteral( "STATUS_APPLIED_WITH_CONFLICTS" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedWithConflictsStatus;
-    else if ( status == QStringLiteral( "STATUS_NOT_APPLIED" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileNotAppliedStatus;
-    else if ( status == QStringLiteral( "STATUS_PENDING" ) )
+    mCloudProjects[index].deltaFileUploadStatusString = QString();
+
+    if ( ! mDeltaStatusListModel->allHaveFinalStatus() )
+    {
       mCloudProjects[index].deltaFileUploadStatus = DeltaFilePendingStatus;
-    else if ( status == QStringLiteral( "STATUS_WAITING" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileWaitingStatus;
-    else if ( status == QStringLiteral( "STATUS_BUSY" ) )
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileBusyStatus;
-    else if ( status == QStringLiteral( "STATUS_ERROR" ) )
-    {
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
-      mCloudProjects[index].deltaFileUploadStatusString = doc.object().value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
-    }
-    else
-    {
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
-      mCloudProjects[index].deltaFileUploadStatusString = QStringLiteral( "Unknown status \"%1\"" ).arg( status );
-      QgsLogger::warning( mCloudProjects[index].deltaFileUploadStatusString );
+      emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
+      emit networkDeltaStatusChecked( projectId );
+      return;
     }
 
+    // probably reseting the uniq ptr is not needed here, but it will be clear when the Delta Status UI is created
+    mDeltaStatusListModel.reset();
+
+    mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedStatus;
+
+    emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
     emit networkDeltaStatusChecked( projectId );
   } );
 }
@@ -1064,7 +1112,7 @@ void QFieldCloudProjectsModel::projectUploadAttachments( const QString &projectI
     {
       Q_UNUSED( bytesTotal );
       mCloudProjects[index].uploadAttachments[fileName].bytesTransferred = bytesSent;
-      emit dataChanged( idx, idx, QVector<int>() << UploadProgressRole );
+      emit dataChanged( idx, idx, QVector<int>() << UploadAttachmentsProgressRole );
     } );
 
     connect( attachmentCloudReply, &NetworkReply::finished, this, [ = ]()
@@ -1085,7 +1133,7 @@ void QFieldCloudProjectsModel::projectUploadAttachments( const QString &projectI
 
       mCloudProjects[index].uploadAttachmentsFinished++;
       mCloudProjects[index].uploadAttachmentsProgress = mCloudProjects[index].uploadAttachmentsFinished / attachmentFileNames.size();
-      emit dataChanged( idx, idx, QVector<int>() << UploadProgressRole );
+      emit dataChanged( idx, idx, QVector<int>() << UploadAttachmentsProgressRole );
     } );
   }
 }
@@ -1122,7 +1170,7 @@ void QFieldCloudProjectsModel::projectCancelUpload( const QString &projectId )
   QModelIndex idx = createIndex( index, 0 );
 
   emit dataChanged( idx, idx, QVector<int>() << StatusRole << ErrorStatusRole );
-  emit syncFinished( projectId, true, mCloudProjects[index].deltaFileUploadStatusString );
+  emit pushFinished( projectId, true, mCloudProjects[index].deltaFileUploadStatusString );
 
   return;
 }
@@ -1140,7 +1188,7 @@ void QFieldCloudProjectsModel::layerObserverLayerEdited( const QString &layerId 
 
   if ( index == -1 || index >= mCloudProjects.size() )
   {
-    QgsLogger::warning( QStringLiteral( "Layer observer triggered `isDirtyChanged` signal incorrectly" ) );
+    QgsMessageLog::logMessage( QStringLiteral( "Layer observer triggered `isDirtyChanged` signal incorrectly" ) );
     return;
   }
 
@@ -1198,7 +1246,12 @@ QHash<int, QByteArray> QFieldCloudProjectsModel::roleNames() const
   roles[ErrorStatusRole] = "ErrorStatus";
   roles[ErrorStringRole] = "ErrorString";
   roles[DownloadProgressRole] = "DownloadProgress";
-  roles[UploadProgressRole] = "UploadProgress";
+  roles[DownloadJobStatusRole] = "DownloadJobStatus";
+  roles[UploadAttachmentsProgressRole] = "UploadAttachmentsProgress";
+  roles[UploadDeltaProgressRole] = "UploadDeltaProgress";
+  roles[UploadDeltaStatusRole] = "UploadDeltaStatus";
+  roles[UploadDeltaStatusStringRole] = "UploadDeltaStatusString";
+  roles[LocalDeltasCountRole] = "LocalDeltasCount";
   roles[LocalPathRole] = "LocalPath";
   return roles;
 }
@@ -1207,6 +1260,8 @@ void QFieldCloudProjectsModel::reload( const QJsonArray &remoteProjects )
 {
   beginResetModel();
   mCloudProjects.clear();
+
+  QgsProject *qgisProject = QgsProject::instance();
 
   for ( const auto project : remoteProjects )
   {
@@ -1230,6 +1285,8 @@ void QFieldCloudProjectsModel::reload( const QJsonArray &remoteProjects )
     {
       cloudProject.checkout = LocalAndRemoteCheckout;
       cloudProject.localPath = QFieldCloudUtils::localProjectFilePath( cloudProject.id );
+      cloudProject.currentDeltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile.json" ).arg( localPath.absolutePath() ) ).count();
+      cloudProject.committedDeltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile_committed.json" ).arg( localPath.absolutePath() ) ).count();
     }
 
     mCloudProjects << cloudProject;
@@ -1255,7 +1312,11 @@ void QFieldCloudProjectsModel::reload( const QJsonArray &remoteProjects )
     const QString updatedAt = QSettings().value( QStringLiteral( "%1/updatedAt" ).arg( projectPrefix ) ).toString();
 
     CloudProject cloudProject( projectId, owner, name, description, QString(), LocalCheckout, ProjectStatus::Idle );
+    QDir localPath( QStringLiteral( "%1/%2" ).arg( QFieldCloudUtils::localCloudDirectory(), cloudProject.id ) );
     cloudProject.localPath = QFieldCloudUtils::localProjectFilePath( cloudProject.id );
+    cloudProject.currentDeltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile.json" ).arg( localPath.absolutePath() ) ).count();
+    cloudProject.committedDeltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile_committed.json" ).arg( localPath.absolutePath() ) ).count();
+
     mCloudProjects << cloudProject;
 
     Q_ASSERT( projectId == cloudProject.id );
@@ -1301,11 +1362,21 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
           : mCloudProjects.at( index.row() ).errorStatus == UploadErrorStatus
             ? mCloudProjects.at( index.row() ).deltaFileUploadStatusString
             : QString();
+    case DownloadJobStatusRole:
+      return mCloudProjects.at( index.row() ).downloadJobStatus;
     case DownloadProgressRole:
-      return mCloudProjects.at( index.row() ).downloadProgress;
-    case UploadProgressRole:
+    return mCloudProjects.at( index.row() ).downloadProgress;
+    case UploadAttachmentsProgressRole:
       // when we start syncing also the photos, it would make sense to go there
-      return 0.5 + 0.5 * (mCloudProjects.at( index.row() ).uploadAttachmentsProgress);
+      return mCloudProjects.at( index.row() ).uploadAttachmentsProgress;
+    case UploadDeltaProgressRole:
+      return mCloudProjects.at( index.row() ).uploadDeltaProgress;
+    case UploadDeltaStatusRole:
+      return mCloudProjects.at( index.row() ).deltaFileUploadStatus;
+    case UploadDeltaStatusStringRole:
+      return mCloudProjects.at( index.row() ).deltaFileUploadStatusString;
+    case LocalDeltasCountRole:
+      return mCloudProjects.at( index.row() ).currentDeltasCount + mCloudProjects.at( index.row() ).committedDeltasCount;
     case LocalPathRole:
       return mCloudProjects.at( index.row() ).localPath;
   }
@@ -1313,7 +1384,7 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
   return QVariant();
 }
 
-bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
+bool QFieldCloudProjectsModel::revertLocalChangesFromCurrentProject()
 {
   const int index = findProject( mCurrentProjectId );
 
@@ -1321,12 +1392,20 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
     return false;
 
   if ( ! mLayerObserver->commit() )
+  {
+    QgsMessageLog::logMessage( QStringLiteral( "Failed to commit" ) );
     return false;
+  }
 
   DeltaFileWrapper *dfw = mLayerObserver->committedDeltaFileWrapper();
 
   if ( ! dfw->applyReversed() )
+  {
+    QgsMessageLog::logMessage( QStringLiteral( "Failed to apply reversed" ) );
     return false;
+  }
+
+  mCloudProjects[index].modification ^= LocalModification;
 
   dfw->reset();
   dfw->resetId();
@@ -1339,4 +1418,103 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
     return false;
 
   return true;
+}
+
+bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
+{
+  const int index = findProject( mCurrentProjectId );
+
+  if ( index == -1 || index >= mCloudProjects.size() )
+    return false;
+
+  DeltaFileWrapper *dfwCurrent = mLayerObserver->committedDeltaFileWrapper();
+  DeltaFileWrapper *dfwCommitted = mLayerObserver->committedDeltaFileWrapper();
+
+  if ( ! mLayerObserver->commit() )
+    QgsMessageLog::logMessage( QStringLiteral( "Failed to commit" ) );
+
+  mCloudProjects[index].modification ^= LocalModification;
+
+  dfwCurrent->reset();
+  dfwCurrent->resetId();
+
+  dfwCommitted->reset();
+  dfwCommitted->resetId();
+
+  updateCanCommitCurrentProject();
+  updateCanSyncCurrentProject();
+  updateCurrentProjectChangesCount();
+
+  if ( ! dfwCurrent->toFile() || ! dfwCommitted->toFile() )
+    return false;
+
+  return true;
+}
+
+void QFieldCloudProjectsModel::setGpkgFlusher( QgsGpkgFlusher *flusher )
+{
+  if ( mGpkgFlusher == flusher )
+    return;
+
+  mGpkgFlusher = flusher;
+
+  emit gpkgFlusherChanged();
+}
+
+bool QFieldCloudProjectsModel::deleteGpkgShmAndWal( const QStringList &gpkgFileNames )
+{
+  bool isSuccess = true;
+
+  for ( const QString &fileName : gpkgFileNames )
+  {
+    QFile shmFile( QStringLiteral( "%1-shm" ).arg( fileName ) );
+    if ( shmFile.exists() )
+    {
+      if ( ! shmFile.remove() )
+      {
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to remove -shm file '%1' " ).arg( shmFile.fileName() ) );
+        isSuccess = false;
+      }
+    }
+
+    QFile walFile( QStringLiteral( "%1-wal" ).arg( fileName ) );
+
+    if ( walFile.exists() )
+    {
+      if ( ! walFile.remove() )
+      {
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to remove -wal file '%1' " ).arg( walFile.fileName() ) );
+        isSuccess = false;
+      }
+    }
+  }
+
+  return isSuccess;
+}
+
+QStringList QFieldCloudProjectsModel::filterGpkgFileNames( const QStringList &fileNames ) const
+{
+  QStringList gpkgFileNames;
+
+  for ( const QString &fileName : fileNames )
+  {
+    if ( fileName.endsWith( QStringLiteral( ".gpkg" ) ) )
+    {
+      gpkgFileNames.append( fileName );
+    }
+  }
+
+  return gpkgFileNames;
+}
+
+QStringList QFieldCloudProjectsModel::projectFileNames( const QString &projectPath, const QStringList &fileNames ) const
+{
+  QStringList prefixedFileNames;
+
+  for ( const QString &fileName : fileNames )
+  {
+    prefixedFileNames.append( QStringLiteral( "%1/%2" ).arg( projectPath, fileName ) );
+  }
+
+  return prefixedFileNames;
 }

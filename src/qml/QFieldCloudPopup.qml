@@ -143,13 +143,82 @@ Popup {
                    cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading
           font: Theme.defaultFont
           text: switch(cloudProjectsModel.currentProjectData.Status ) {
-                  case QFieldCloudProjectsModel.Downloading: qsTr('Downloading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.DownloadProgress * 100) ); break;
-                  case QFieldCloudProjectsModel.Uploading: qsTr('Uploading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.UploadProgress * 100) ); break;
+                  case QFieldCloudProjectsModel.Downloading:
+                    switch ( cloudProjectsModel.currentProjectData.DownloadJobStatus ) {
+                      case QFieldCloudProjectsModel.DownloadJobCreatedStatus:
+                        return qsTr('Downloading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.DownloadProgress * 100) )
+                      default:
+                        return qsTr('QFieldCloud is preparing the latest data just for you.\nThis might take some time, please hold tight…')
+                    }
+                  case QFieldCloudProjectsModel.Uploading:
+                    switch ( cloudProjectsModel.currentProjectData.UploadDeltaStatus ) {
+                      case QFieldCloudProjectsModel.DeltaFileLocalStatus:
+                        return qsTr('Uploading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.UploadDeltaProgress * 100) );
+                      default:
+                        return qsTr('QFieldCloud is applying the latest uploaded changes.\nThis might take some time, please hold tight…')
+                    }
                   default: '';
                 }
+
           wrapMode: Text.WordWrap
           horizontalAlignment: Text.AlignHCenter
           Layout.fillWidth: true
+        }
+
+        Rectangle {
+          Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+          Layout.margins: 10
+          width: 64
+          height: 64
+          color: 'transparent'
+          visible: cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Downloading ||
+                   cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Uploading
+
+          Image {
+            id: statusIcon
+            anchors.fill: parent
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            source: switch(cloudProjectsModel.currentProjectData.Status ) {
+                    case QFieldCloudProjectsModel.Downloading:
+                      switch ( cloudProjectsModel.currentProjectData.DownloadJobStatus ) {
+                        case QFieldCloudProjectsModel.DownloadJobCreatedStatus:
+                          return Theme.getThemeVectorIcon('ic_cloud_download_24dp');
+                        default:
+                          return Theme.getThemeVectorIcon('ic_cloud_active_24dp');
+                      }
+                    case QFieldCloudProjectsModel.Uploading:
+                      switch ( cloudProjectsModel.currentProjectData.UploadDeltaStatus ) {
+                        case QFieldCloudProjectsModel.DeltaFileLocalStatus:
+                          return Theme.getThemeVectorIcon('ic_cloud_upload_24dp');
+                        default:
+                          return Theme.getThemeVectorIcon('ic_cloud_active_24dp');
+                      }
+                    default: '';
+                  }
+            width: parent.width
+            height: parent.height
+            sourceSize.width: width * screen.devicePixelRatio
+            sourceSize.height: height * screen.devicePixelRatio
+            opacity: 1
+
+            SequentialAnimation {
+              OpacityAnimator {
+                  from: 1
+                  to: 0.2
+                  duration: 2000
+                  target: statusIcon
+              }
+              OpacityAnimator {
+                  from: 0.2
+                  to: 1
+                  duration: 2000
+                  target: statusIcon
+              }
+              running: true
+              loops: Animation.Infinite
+            }
+          }
         }
 
         Text {
@@ -165,7 +234,7 @@ Popup {
           Connections {
             target: cloudProjectsModel
 
-            function onSyncFinished(projectId, hasError, errorString) {
+            function onPushFinished(projectId, hasError, errorString) {
               transferErrorText.visible = hasError && cloudProjectsModel.currentProjectData.Status === QFieldCloudProjectsModel.Idle;
 
               if (transferErrorText.visible)
@@ -211,6 +280,8 @@ Popup {
             font: Theme.defaultFont
             text: qsTr('Synchronize')
             enabled: cloudProjectsModel.canCommitCurrentProject || cloudProjectsModel.canSyncCurrentProject
+            icon.source: Theme.getThemeIcon('ic_cloud_download_24dp')
+            icon.color: 'white'
 
             onClicked: uploadProject(true)
           }
@@ -232,6 +303,8 @@ Popup {
             font: Theme.defaultFont
             text: qsTr('Push changes')
             enabled: cloudProjectsModel.canCommitCurrentProject
+            icon.source: Theme.getThemeIcon('ic_cloud_upload_24dp')
+            icon.color: 'white'
 
             onClicked: uploadProject(false)
           }
@@ -252,10 +325,16 @@ Popup {
             Layout.fillWidth: true
             font: Theme.defaultFont
             bgcolor: Theme.darkRed
-            text: qsTr('Discard local changes')
-            enabled: cloudProjectsModel.canCommitCurrentProject
+            text: qsTr('Revert local changes')
+            enabled: cloudProjectsModel.currentProjectChangesCount > 0
+            icon.source: Theme.getThemeIcon('ic_undo_white_24dp')
+            icon.color: 'white'
 
             onClicked: {
+              revertDialog.open();
+            }
+
+            onPressAndHold: {
               discardDialog.open();
             }
           }
@@ -288,6 +367,37 @@ Popup {
 
 
   Dialog {
+    id: revertDialog
+    parent: mainWindow.contentItem
+
+    property int selectedCount: 0
+    property bool isDeleted: false
+
+    visible: false
+    modal: true
+
+    x: ( mainWindow.width - width ) / 2
+    y: ( mainWindow.height - height ) / 2
+
+    title: qsTr( "Revert local changes" )
+    Label {
+      width: parent.width
+      wrapMode: Text.WordWrap
+      text: qsTr( "Should local changes be reverted?" )
+    }
+
+    standardButtons: Dialog.Ok | Dialog.Cancel
+
+    onAccepted: {
+      revertLocalChangesFromCurrentProject();
+    }
+    onRejected: {
+      visible = false
+      popup.focus = true;
+    }
+  }
+
+  Dialog {
     id: discardDialog
     parent: mainWindow.contentItem
 
@@ -304,7 +414,7 @@ Popup {
     Label {
       width: parent.width
       wrapMode: Text.WordWrap
-      text: qsTr( "Should local changes be discarded?" )
+      text: qsTr( "Discarding local changes may result in QFieldCloud conflicts. Should local changes be discarded?" )
     }
 
     standardButtons: Dialog.Ok | Dialog.Cancel
@@ -333,6 +443,19 @@ Popup {
       cloudProjectsModel.uploadProject(cloudProjectsModel.currentProjectId, shouldDownloadUpdates)
       return
     }
+  }
+
+  function revertLocalChangesFromCurrentProject() {
+    if (cloudProjectsModel.canCommitCurrentProject || cloudProjectsModel.canSyncCurrentProject) {
+      if ( cloudProjectsModel.revertLocalChangesFromCurrentProject(cloudProjectsModel.currentProjectId) )
+        displayToast(qsTr('Local changes reverted'))
+      else
+        displayToast(qsTr('Failed to revert changes'))
+
+      return
+    }
+
+    displayToast(qsTr('No changes to revert'))
   }
 
   function discardLocalChangesFromCurrentProject() {

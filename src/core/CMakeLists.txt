@@ -68,6 +68,7 @@ SET(QFIELD_CORE_SRCS
   qfieldcloudconnection.cpp
   qfieldcloudprojectsmodel.cpp
   deltafilewrapper.cpp
+  deltastatuslistmodel.cpp
   layerobserver.cpp
   networkreply.cpp
   networkmanager.cpp
@@ -144,6 +145,7 @@ SET(QFIELD_CORE_HDRS
   qfieldcloudconnection.h
   qfieldcloudprojectsmodel.h
   deltafilewrapper.h
+  deltastatuslistmodel.h
   layerobserver.h
   networkreply.h
   networkmanager.h

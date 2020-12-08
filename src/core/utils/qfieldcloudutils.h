@@ -22,6 +22,8 @@
 
 class QString;
 class QFieldCloudProjectsModel;
+class TestDeltaFileWrapper;
+class TestLayerObserver;
 
 class QFieldCloudUtils : public QObject
 {
@@ -55,6 +57,13 @@ class QFieldCloudUtils : public QObject
      * @return const QString either UUID-like string or a null string in case of failure
      */
     Q_INVOKABLE static const QString getProjectId( QgsProject *project );
+
+  private:
+
+    static QString sQgisSettingsDirPath;
+
+  friend TestDeltaFileWrapper;
+  friend TestLayerObserver;
 };
 
 #endif // QFIELDCLOUDUTILS_H

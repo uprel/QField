@@ -98,6 +98,12 @@ class DeltaFileWrapper : public QObject
 
 
     /**
+     * Get the layer id as it is in the original source.
+     */
+    static QString getSourceLayerId( const QgsVectorLayer *vl );
+
+
+    /**
      * Clears the deltas from memory as there are no deltas at all. Does not affect the permanent storage until `toFile()` is called.
      */
     Q_INVOKABLE void reset();
@@ -230,35 +236,38 @@ class DeltaFileWrapper : public QObject
     /**
      * Adds create delta.
      *
-     * @param layerId layer ID where the old feature belongs to
+     * @param localLayerId layer ID where the old feature belongs to
+     * @param sourceLayerId layer ID where the old feature belongs to
      * @param localPkAttrName attribute name of the primary key
      * @param sourcePkAttrName attribute name of the primary key
      * @param newFeature the feature that has been created
      */
-    void addCreate( const QString &layerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &newFeature );
+    void addCreate( const QString &localLayerId, const QString &sourceLayerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &newFeature );
 
 
     /**
      * Adds delete delta.
      *
-     * @param layerId layer ID where the old feature belongs to
+     * @param localLayerId layer ID where the old feature belongs to
+     * @param sourceLayerId layer ID where the old feature belongs to
      * @param localPkAttrName attribute name of the primary key
      * @param sourcePkAttrName attribute name of the primary key
      * @param oldFeature the feature that has been deleted
      */
-    void addDelete( const QString &layerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature );
+    void addDelete( const QString &localLayerId, const QString &sourceLayerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature );
 
 
     /**
      * Adds patch delta.
      *
-     * @param layerId layer ID where the old feature belongs to
+     * @param localLayerId layer ID where the old feature belongs to
+     * @param sourceLayerId layer ID where the old feature belongs to
      * @param localPkAttrName attribute name of the primary key
      * @param sourcePkAttrName attribute name of the primary key
      * @param oldFeature the old version of the feature that has been modified
      * @param newFeature the new version of the feature that has been modified
      */
-    void addPatch( const QString &layerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature, const QgsFeature &newFeature );
+    void addPatch( const QString &localLayerId, const QString &sourceLayerId, const QString &localPkAttrName, const QString &sourcePkAttrName, const QgsFeature &oldFeature, const QgsFeature &newFeature );
 
 
     /**
@@ -344,6 +353,11 @@ class DeltaFileWrapper : public QObject
      */
     const QgsProject *mProject = nullptr;
 
+
+    /**
+     * A mapping between the local primary key and it's index in the delta file.
+     */
+    QMap<QString, QMap<QString, int>> mLocalPkDeltaIdx;
 
     /**
      * The list of JSON deltas.

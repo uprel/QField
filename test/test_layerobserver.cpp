@@ -19,6 +19,7 @@
 
 #include "qfield_testbase.h"
 #include "layerobserver.h"
+#include "utils/qfieldcloudutils.h"
 
 
 class TestLayerObserver: public QObject
@@ -27,6 +28,22 @@ class TestLayerObserver: public QObject
   private slots:
     void initTestCase()
     {
+      QTemporaryDir settingsDir;
+      settingsDir.setAutoRemove( false );
+
+      QVERIFY2( settingsDir.isValid(), "Failed to create temp dir" );
+      QVERIFY2( QDir( settingsDir.path() ).mkpath( QStringLiteral("cloud_projects/TEST_PROJECT_ID") ), "Failed to create project dir" );
+
+      QDir projectDir( QStringLiteral( "%1/cloud_projects/TEST_PROJECT_ID" ).arg( settingsDir.path() ) );
+      QFieldCloudUtils::sQgisSettingsDirPath = settingsDir.path();
+      QFile projectFile( QStringLiteral( "%1/%2" ).arg( projectDir.path(), QStringLiteral( "project.qgs" ) ) );
+      QFile attachmentFile( QStringLiteral( "%1/%2" ).arg( projectDir.path(), QStringLiteral( "attachment.jpg" ) ) );
+
+      QVERIFY( projectFile.open( QIODevice::WriteOnly ) );
+      QVERIFY( projectFile.flush() );
+
+      QgsProject::instance()->setFileName( projectFile.fileName() );
+
       mLayer.reset( new QgsVectorLayer( QStringLiteral( "Point?crs=EPSG:3857&field=fid:integer&field=str:string" ), QStringLiteral( "Test Layer" ), QStringLiteral( "memory" ) ) );
       mLayer->setCustomProperty( QStringLiteral( "QFieldSync/action" ), QStringLiteral( "CLOUD" ) );
       mLayer->setCustomProperty( QStringLiteral( "QFieldSync/sourceDataPrimaryKeys" ), QStringLiteral( "fid" ) );
@@ -50,14 +67,6 @@ class TestLayerObserver: public QObject
       QVERIFY( mLayer->addFeature( f2 ) );
       QVERIFY( mLayer->addFeature( f3 ) );
       QVERIFY( mLayer->commitChanges() );
-
-      QTemporaryDir projectDir;
-      projectDir.setAutoRemove( false );
-
-      QVERIFY2( projectDir.isValid(), "Failed to create temp dir" );
-
-      QgsProject::instance()->setPresetHomePath( projectDir.path() );
-      QgsProject::instance()->writeEntry( QStringLiteral( "qfieldcloud" ), QStringLiteral( "projectId" ), QStringLiteral( "TEST_PROJECT_ID" ) );
 
       mLayerObserver.reset( new LayerObserver( QgsProject::instance() ) );
 

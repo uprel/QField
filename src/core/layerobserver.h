@@ -130,7 +130,7 @@ class LayerObserver : public QObject
      * @param layerId layer ID
      * @param addedFeatures new features
      */
-    void onCommittedFeaturesAdded( const QString &layerId, const QgsFeatureList &addedFeatures );
+    void onCommittedFeaturesAdded( const QString &localLayerId, const QgsFeatureList &addedFeatures );
 
 
     /**
@@ -139,7 +139,7 @@ class LayerObserver : public QObject
      * @param layerId layer ID
      * @param deletedFeatureIds old feature IDs
      */
-    void onCommittedFeaturesRemoved( const QString &layerId, const QgsFeatureIds &deletedFeatureIds );
+    void onCommittedFeaturesRemoved( const QString &localLayerId, const QgsFeatureIds &deletedFeatureIds );
 
 
     /**
@@ -148,7 +148,7 @@ class LayerObserver : public QObject
      * @param layerId
      * @param changedAttributesValues
      */
-    void onCommittedAttributeValuesChanges( const QString &layerId, const QgsChangedAttributesMap &changedAttributesValues );
+    void onCommittedAttributeValuesChanges( const QString &localLayerId, const QgsChangedAttributesMap &changedAttributesValues );
 
 
     /**
@@ -157,7 +157,7 @@ class LayerObserver : public QObject
      * @param layerId
      * @param changedGeometries
      */
-    void onCommittedGeometriesChanges( const QString &layerId, const QgsGeometryMap &changedGeometries );
+    void onCommittedGeometriesChanges( const QString &localLayerId, const QgsGeometryMap &changedGeometries );
 
 
     /**
@@ -199,6 +199,12 @@ class LayerObserver : public QObject
      * value  - patched feature IDs for that layer
      */
     QMap<QString, QgsFeatureIds> mPatchedFids;
+
+
+    /**
+     * Layer ids being observed for changes. Should reset when the project is changed.
+     */
+    QSet<QString> mObservedLayerIds;
 
 
     /**

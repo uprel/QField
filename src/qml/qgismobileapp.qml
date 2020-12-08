@@ -76,6 +76,7 @@ ApplicationWindow {
   //currentRubberband provides the rubberband depending on the current state (digitize or measure)
   property Rubberband currentRubberband
   property LayerObserver layerObserverAlias: layerObserver
+  property QgsGpkgFlusher gpkgFlusherAlias: gpkgFlusher
 
   signal closeMeasureTool()
   signal changeMode( string mode )
@@ -1600,6 +1601,7 @@ ApplicationWindow {
     id: cloudProjectsModel
     cloudConnection: cloudConnection
     layerObserver: layerObserverAlias
+    gpkgFlusher: gpkgFlusherAlias
 
     onProjectDownloaded: function ( projectId, hasError, projectName ) {
       return hasError
@@ -1607,13 +1609,13 @@ ApplicationWindow {
           : displayToast( qsTr( "Project %1 successfully downloaded, it's now available to open" ).arg( projectName ) );
     }
 
-    onSyncFinished: function ( projectId, hasError, errorString ) {
+    onPushFinished: function ( projectId, hasError, errorString ) {
       if ( hasError ) {
-        displayToast( qsTr( "Project failed to synchronize with QFieldCloud: %1" ).arg( errorString ) )
+        displayToast( qsTr( "Changes failed to reach QFieldCloud: %1" ).arg( errorString ) )
         return;
       }
 
-      displayToast( qsTr( "Project successfully synchronized with QFieldCloud" ) )
+      displayToast( qsTr( "Changes successfully pushed to QFieldCloud" ) )
     }
 
     onWarning: displayToast( message )

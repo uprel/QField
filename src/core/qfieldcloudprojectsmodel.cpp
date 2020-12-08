@@ -255,10 +255,6 @@ bool QFieldCloudProjectsModel::canSyncProject( const QString &projectId ) const
     return false;
   else if ( projectStatus( projectId ) == ProjectStatus::Idle )
     return true;
-  // In the future we might have a smarter mechanism whether there is RemoteModificationr
-  else if ( projectStatus( projectId ) == ProjectStatus::Idle
-            && projectModification( projectId ) & RemoteModification )
-    return true;
 
   return false;
 }

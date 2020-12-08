@@ -36,8 +36,7 @@ class LayerObserver : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY( DeltaFileWrapper *currentDeltaFileWrapper READ currentDeltaFileWrapper NOTIFY currentDeltaFileWrapperChanged )
-    Q_PROPERTY( DeltaFileWrapper *committedDeltaFileWrapper READ committedDeltaFileWrapper NOTIFY committedDeltaFileWrapperChanged )
+    Q_PROPERTY( DeltaFileWrapper *deltaFileWrapper READ deltaFileWrapper NOTIFY deltaFileWrapperChanged )
 
   public:
     /**
@@ -46,31 +45,6 @@ class LayerObserver : public QObject
      * @param project
      */
     explicit LayerObserver( const QgsProject *project );
-
-
-    /**
-     * Generates a new complete name with path for deltas file
-     *
-     * @param isCurrentDeltaFile if true, no timestamp is appended
-     * @return QString
-     */
-    QString generateDeltaFileName( bool isCurrentDeltaFile = false );
-
-
-    /**
-     * Returns whether delta file writing has an error
-     *
-     * @return bool
-     */
-    bool hasError() const;
-
-
-    /**
-     * Starts new delta file and finishes writing for the old one
-     *
-     * @return bool whether the commit was successful
-     */
-    Q_INVOKABLE bool commit();
 
 
     /**
@@ -84,22 +58,12 @@ class LayerObserver : public QObject
      *
      * @return current delta file
      */
-    DeltaFileWrapper *currentDeltaFileWrapper() const;
-
-
-    /**
-     * Gets the committed delta file
-     *
-     * @return committed delta file
-     */
-    DeltaFileWrapper *committedDeltaFileWrapper() const;
+    DeltaFileWrapper *deltaFileWrapper() const;
 
 
   signals:
     void layerEdited( const QString &layerId );
-    void currentDeltaFileWrapperChanged();
-    void committedDeltaFileWrapperChanged();
-    void deltaFileCommitted();
+    void deltaFileWrapperChanged();
 
 
   private slots:
@@ -170,19 +134,19 @@ class LayerObserver : public QObject
     /**
      * The current Deltas File Wrapper object
      */
-    std::unique_ptr<DeltaFileWrapper> mCurrentDeltaFileWrapper;
-
-
-    /**
-     * The commited Deltas File Wrapper object
-     */
-    std::unique_ptr<DeltaFileWrapper> mCommittedDeltaFileWrapper;
+    std::unique_ptr<DeltaFileWrapper> mDeltaFileWrapper;
 
 
     /**
      * The current project instance
      */
     const QgsProject *mProject = nullptr;
+
+
+    /**
+     * The current project delta file name
+     */
+    QString mDeltaFileName = nullptr;
 
 
     /**

@@ -260,14 +260,15 @@ Popup {
           rowSpacing: parent.rowSpacing
 
           Text {
+            property int changesCount: cloudProjectsModel.layerObserver.deltaFileWrapper.count
             id: changesText
             font: Theme.tipFont
             color: Theme.gray
-            text: cloudProjectsModel.currentProjectChangesCount === 0
+            text: changesCount === 0
                   ? qsTr('There are no local changes.')
-                  : cloudProjectsModel.currentProjectChangesCount === 1
+                  : changesCount === 1
                     ? qsTr('There is a single local change.')
-                    : qsTr('There are %1 local changes.').arg( cloudProjectsModel.currentProjectChangesCount )
+                    : qsTr('There are %1 local changes.').arg( changesCount )
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
             Layout.bottomMargin: 20
@@ -279,7 +280,7 @@ Popup {
             Layout.fillWidth: true
             font: Theme.defaultFont
             text: qsTr('Synchronize')
-            enabled: cloudProjectsModel.canCommitCurrentProject || cloudProjectsModel.canSyncCurrentProject
+            enabled: !!(cloudProjectsModel.currentProjectData && cloudProjectsModel.currentProjectData.CanSync)
             icon.source: Theme.getThemeIcon('ic_cloud_download_24dp')
             icon.color: 'white'
 
@@ -302,7 +303,7 @@ Popup {
             Layout.fillWidth: true
             font: Theme.defaultFont
             text: qsTr('Push changes')
-            enabled: cloudProjectsModel.canCommitCurrentProject
+            enabled: !!(cloudProjectsModel.currentProjectData && cloudProjectsModel.currentProjectData.CanSync) && cloudProjectsModel.layerObserver.deltaFileWrapper.count > 0
             icon.source: Theme.getThemeIcon('ic_cloud_upload_24dp')
             icon.color: 'white'
 
@@ -326,7 +327,7 @@ Popup {
             font: Theme.defaultFont
             bgcolor: Theme.darkRed
             text: qsTr('Revert local changes')
-            enabled: cloudProjectsModel.currentProjectChangesCount > 0
+            enabled: cloudProjectsModel.layerObserver.deltaFileWrapper.count > 0
             icon.source: Theme.getThemeIcon('ic_undo_white_24dp')
             icon.color: 'white'
 
@@ -439,14 +440,14 @@ Popup {
   }
 
   function uploadProject(shouldDownloadUpdates) {
-    if (cloudProjectsModel.canCommitCurrentProject || cloudProjectsModel.canSyncCurrentProject) {
+    if (cloudProjectsModel.currentProjectData && cloudProjectsModel.currentProjectData.CanSync) {
       cloudProjectsModel.uploadProject(cloudProjectsModel.currentProjectId, shouldDownloadUpdates)
       return
     }
   }
 
   function revertLocalChangesFromCurrentProject() {
-    if (cloudProjectsModel.canCommitCurrentProject || cloudProjectsModel.canSyncCurrentProject) {
+    if (cloudProjectsModel.currentProjectData && cloudProjectsModel.currentProjectData.CanSync) {
       if ( cloudProjectsModel.revertLocalChangesFromCurrentProject(cloudProjectsModel.currentProjectId) )
         displayToast(qsTr('Local changes reverted'))
       else
@@ -459,7 +460,7 @@ Popup {
   }
 
   function discardLocalChangesFromCurrentProject() {
-    if (cloudProjectsModel.canCommitCurrentProject || cloudProjectsModel.canSyncCurrentProject) {
+    if (cloudProjectsModel.currentProjectData && cloudProjectsModel.currentProjectData.CanSync) {
       if ( cloudProjectsModel.discardLocalChangesFromCurrentProject(cloudProjectsModel.currentProjectId) )
         displayToast(qsTr('Local changes discarded'))
       else

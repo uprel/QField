@@ -1,5 +1,6 @@
 import QtQuick 2.12
 import QtQuick.Controls 2.12
+import QtQuick.Controls.Material 2.12
 import QtQuick.Layouts 1.12
 
 import Theme 1.0
@@ -64,6 +65,7 @@ ToolBar {
       ]
     }
   }
+  Material.foreground: undefined
 
   RowLayout {
     anchors.fill: parent

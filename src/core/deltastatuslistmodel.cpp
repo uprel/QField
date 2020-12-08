@@ -22,8 +22,8 @@
 DeltaStatusListModel::DeltaStatusListModel()
 {}
 
-DeltaStatusListModel::DeltaStatusListModel( QJsonDocument doc )
-  : mJson( doc )
+DeltaStatusListModel::DeltaStatusListModel( QJsonDocument deltasStatusList )
+  : mJson( deltasStatusList )
 {
   if ( ! mJson.isArray() )
   {

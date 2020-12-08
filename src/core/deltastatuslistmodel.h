@@ -59,7 +59,7 @@ public:
   };
 
   DeltaStatusListModel();
-  DeltaStatusListModel( QJsonDocument deltasStatusList );
+  explicit DeltaStatusListModel( QJsonDocument deltasStatusList );
 
   //! Returns number of rows.
   int rowCount( const QModelIndex &parent ) const override;

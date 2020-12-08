@@ -301,7 +301,6 @@ QString DeltaFileWrapper::toFileForUpload( const QString &outFileName ) const
         fileName = tempFile.fileName();
     }
 
-    const QJsonArray constDeltas = deltas();
     QJsonArray resultDeltas;
     QJsonObject jsonRoot( mJsonRoot );
 

@@ -674,7 +674,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
           const QStringList unprefixedGpkgFileNames = filterGpkgFileNames( mCloudProjects[index].downloadFileTransfers.keys() );
           const QStringList gpkgFileNames = projectFileNames( mProject->homePath(), unprefixedGpkgFileNames );
           QString projectFileName = mProject->fileName();
-          mProject->setFileName( QStringLiteral( "" ) );
+          mProject->setFileName( QString() );
 
           for ( const QString &fileName : gpkgFileNames )
             mGpkgFlusher->stop( fileName );

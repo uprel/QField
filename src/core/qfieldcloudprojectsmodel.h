@@ -57,7 +57,8 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       UploadDeltaStatusRole,
       UploadDeltaStatusStringRole,
       LocalDeltasCountRole,
-      LocalPathRole
+      LocalPathRole,
+      CanSyncRole,
     };
 
     Q_ENUM( ColumnRole )
@@ -172,21 +173,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     //! Returns the cloud project data of the currently opened project.
     QVariantMap currentProjectData() const;
 
-    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
-    //! Stores the total number of changes (deltas) of the currently opened project. Readonly.
-    Q_PROPERTY( int currentProjectChangesCount READ currentProjectChangesCount NOTIFY currentProjectChangesCountChanged )
-
-    //! Returns the total number of changes (deltas) of the currently opened project.
-    int currentProjectChangesCount() const;
-
-    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
-    //! Stores whether there are uncommitted deltas and they can be commited.
-    Q_PROPERTY( bool canCommitCurrentProject READ canCommitCurrentProject NOTIFY canCommitCurrentProjectChanged )
-
-    // TODO move deltaFileWrapper in the projects, this can be obtained via currentProjectData.ChangesCount
-    //! Stores whether there are committed deltas and they can be pushed.
-    Q_PROPERTY( bool canSyncCurrentProject READ canSyncCurrentProject NOTIFY canSyncCurrentProjectChanged )
-
     //! Returns the cloud project data for given \a projectId.
     Q_INVOKABLE QVariantMap getProjectData( const QString &projectId ) const;
 
@@ -209,7 +195,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     Q_INVOKABLE bool discardLocalChangesFromCurrentProject();
 
     //! Returns the cloud project status for given \a projectId.
-    Q_INVOKABLE ProjectStatus projectStatus( const QString &projectId );
+    Q_INVOKABLE ProjectStatus projectStatus( const QString &projectId ) const;
 
     //! Returns the cloud project modification for given \a projectId.
     Q_INVOKABLE ProjectModifications projectModification( const QString &projectId ) const;
@@ -234,8 +220,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     void layerObserverChanged();
     void currentProjectIdChanged();
     void currentProjectDataChanged();
-    void currentProjectChangesCountChanged();
-    void canCommitCurrentProjectChanged();
     void canSyncCurrentProjectChanged();
     void gpkgFlusherChanged();
     void warning( const QString &message );
@@ -338,8 +322,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       double uploadAttachmentsProgress = 0.0; // range from 0.0 to 1.0
       double uploadDeltaProgress = 0.0; // range from 0.0 to 1.0
 
-      int currentDeltasCount = 0;
-      int committedDeltasCount = 0;
+      int deltasCount = 0;
     };
 
     inline QString layerFileName( const QgsMapLayer *layer ) const;
@@ -347,13 +330,10 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     QList<CloudProject> mCloudProjects;
     QFieldCloudConnection *mCloudConnection = nullptr;
     QString mCurrentProjectId;
-    int mCurrentProjectChangesCount = 0;
     LayerObserver *mLayerObserver = nullptr;
     QgsProject *mProject = nullptr;
     QgsGpkgFlusher *mGpkgFlusher = nullptr;
 
-    bool mCanCommitCurrentProject = false;
-    bool mCanSyncCurrentProject = false;
     std::unique_ptr<DeltaStatusListModel> mDeltaStatusListModel;
 
     void projectCancelUpload( const QString &projectId );
@@ -366,11 +346,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     NetworkReply *downloadFile( const QString &exportJobId, const QString &fileName );
     void projectDownloadFiles( const QString &projectId );
 
-    bool canCommitCurrentProject();
-    bool canSyncCurrentProject();
-    void updateCanCommitCurrentProject();
-    void updateCanSyncCurrentProject();
-    void updateCurrentProjectChangesCount();
+    bool canSyncProject( const QString &projectId ) const;
 
     bool deleteGpkgShmAndWal( const QStringList &gpkgFileNames );
     QStringList projectFileNames( const QString &projectPath, const QStringList &fileNames ) const;

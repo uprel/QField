@@ -30,91 +30,25 @@
 LayerObserver::LayerObserver( const QgsProject *project )
   : mProject( project )
 {
-  mCurrentDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( true ) ) );
-  mCommittedDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( false ) ) );
+  mDeltaFileWrapper = std::make_unique<DeltaFileWrapper>( mProject, QStringLiteral( "%1/deltafile.json" ).arg( mProject->homePath() ) );
 
   connect( mProject, &QgsProject::homePathChanged, this, &LayerObserver::onHomePathChanged );
   connect( mProject, &QgsProject::layersAdded, this, &LayerObserver::onLayersAdded );
 }
 
 
-QString LayerObserver::generateDeltaFileName( bool isCurrentDeltaFile )
-{
-  return ( isCurrentDeltaFile )
-         ? QStringLiteral( "%1/deltafile.json" ).arg( mProject->homePath() )
-         : QStringLiteral( "%1/deltafile_committed.json" ).arg( mProject->homePath() );
-}
-
-
-bool LayerObserver::hasError() const
-{
-  return mCurrentDeltaFileWrapper->hasError() && mCommittedDeltaFileWrapper->hasError();
-}
-
-
-bool LayerObserver::commit()
-{
-  // First make sure the current delta file is synced to the disk storage. There might be some unsynced changes.
-  if ( ! mCurrentDeltaFileWrapper->toFile() )
-  {
-    QgsMessageLog::logMessage( QStringLiteral( "Cannot write the current delta file: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
-    return false;
-  }
-
-  // If the delta file is empty, there is nothing to commit, so we return success.
-  if ( mCurrentDeltaFileWrapper->count() == 0 )
-    return true;
-
-  // Try to append the contents of the current delta file to the committed one. Very unlikely to break there.
-  if ( ! mCommittedDeltaFileWrapper->append( mCurrentDeltaFileWrapper.get() ) )
-  {
-    QgsMessageLog::logMessage( QStringLiteral( "Unable to append delta file wrapper contents!" ) );
-    return false;
-  }
-
-  // Make sure the committed changes are synced to the disk storage.
-  if ( ! mCommittedDeltaFileWrapper->toFile() )
-  {
-    QgsMessageLog::logMessage( QStringLiteral( "Cannot write the committed delta file: %1" ).arg( mCommittedDeltaFileWrapper->errorString() ) );
-    return false;
-  }
-
-  // Create brand new delta file for the current (uncommitted) deltas.
-  mCurrentDeltaFileWrapper->reset();
-  mCurrentDeltaFileWrapper->resetId();
-
-  // Make sure the brand new current delta file is synced to the disk storage.
-  if ( ! mCurrentDeltaFileWrapper->toFile() )
-  {
-    QgsMessageLog::logMessage( QStringLiteral( "Cannot write the current delta file: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
-    return false;
-  }
-
-  emit deltaFileCommitted();
-
-  // Successfully committed!
-  return true;
-}
-
-
 void LayerObserver::reset( bool isHardReset ) const
 {
   if ( isHardReset )
-    mCurrentDeltaFileWrapper->resetId();
+    mDeltaFileWrapper->resetId();
 
-  return mCurrentDeltaFileWrapper->reset();
+  return mDeltaFileWrapper->reset();
 }
 
 
-DeltaFileWrapper *LayerObserver::currentDeltaFileWrapper() const
+DeltaFileWrapper *LayerObserver::deltaFileWrapper() const
 {
-  return mCurrentDeltaFileWrapper.get();
-}
-
-
-DeltaFileWrapper *LayerObserver::committedDeltaFileWrapper() const
-{
-  return mCommittedDeltaFileWrapper.get();
+  return mDeltaFileWrapper.get();
 }
 
 
@@ -123,24 +57,18 @@ void LayerObserver::onHomePathChanged()
   if ( mProject->homePath().isNull() )
     return;
 
-  Q_ASSERT( mCurrentDeltaFileWrapper->hasError() || ! mCurrentDeltaFileWrapper->isDirty() );
-  Q_ASSERT( mCommittedDeltaFileWrapper->hasError() || ! mCommittedDeltaFileWrapper->isDirty() );
+  Q_ASSERT( mDeltaFileWrapper->hasError() || ! mDeltaFileWrapper->isDirty() );
 
   // we should make deltas only on cloud projects
   if ( QFieldCloudUtils::getProjectId( mProject ).isEmpty() )
     return;
 
-  mCurrentDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( true ) ) );
-  mCommittedDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, generateDeltaFileName( false ) ) );
+  mDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, QStringLiteral( "%1/deltafile.json" ).arg( mProject->homePath() ) ) );
 
-  if ( mCurrentDeltaFileWrapper->hasError() )
-    QgsMessageLog::logMessage( QStringLiteral( "The current delta file wrapper experienced an error: %1" ).arg( mCurrentDeltaFileWrapper->errorString() ) );
+  if ( mDeltaFileWrapper->hasError() )
+    QgsMessageLog::logMessage( QStringLiteral( "The current delta file wrapper experienced an error: %1" ).arg( mDeltaFileWrapper->errorString() ) );
 
-  if ( mCommittedDeltaFileWrapper->hasError() )
-    QgsMessageLog::logMessage( QStringLiteral( "The current delta file wrapper experienced an error: %1" ).arg( mCommittedDeltaFileWrapper->errorString() ) );
-
-  emit currentDeltaFileWrapperChanged();
-  emit committedDeltaFileWrapperChanged();
+  emit deltaFileWrapperChanged();
 
   mObservedLayerIds.clear();
 
@@ -196,7 +124,7 @@ void LayerObserver::onBeforeCommitChanges()
 
 void LayerObserver::onCommittedFeaturesAdded( const QString &localLayerId, const QgsFeatureList &addedFeatures )
 {
-  if ( mCommittedDeltaFileWrapper->isDeltaBeingApplied() )
+  if ( mDeltaFileWrapper->isDeltaBeingApplied() )
     return;
 
   const QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( sender() );
@@ -206,18 +134,17 @@ void LayerObserver::onCommittedFeaturesAdded( const QString &localLayerId, const
 
   for ( const QgsFeature &newFeature : addedFeatures )
   {
-    mCurrentDeltaFileWrapper->addCreate( localLayerId, sourceLayerId, localPkAttrPair.second, sourcePkAttrPair.second, newFeature );
+    mDeltaFileWrapper->addCreate( localLayerId, sourceLayerId, localPkAttrPair.second, sourcePkAttrPair.second, newFeature );
   }
 }
 
 
 void LayerObserver::onCommittedFeaturesRemoved( const QString &localLayerId, const QgsFeatureIds &deletedFeatureIds )
 {
-  QgsChangedFeatures changedFeatures = mChangedFeatures.value( localLayerId );
-
-  if ( mCommittedDeltaFileWrapper->isDeltaBeingApplied() )
+  if ( mDeltaFileWrapper->isDeltaBeingApplied() )
     return;
 
+  QgsChangedFeatures changedFeatures = mChangedFeatures.value( localLayerId );
   const QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( sender() );
   const QString sourceLayerId = DeltaFileWrapper::getSourceLayerId( vl );
   const QPair<int, QString> localPkAttrPair = DeltaFileWrapper::getLocalPkAttribute( vl );
@@ -228,7 +155,7 @@ void LayerObserver::onCommittedFeaturesRemoved( const QString &localLayerId, con
     Q_ASSERT( changedFeatures.contains( fid ) );
 
     QgsFeature oldFeature = changedFeatures.take( fid );
-    mCurrentDeltaFileWrapper->addDelete( localLayerId, sourceLayerId, localPkAttrPair.second, sourcePkAttrPair.second, oldFeature );
+    mDeltaFileWrapper->addDelete( localLayerId, sourceLayerId, localPkAttrPair.second, sourcePkAttrPair.second, oldFeature );
   }
 
   mChangedFeatures.insert( localLayerId, changedFeatures );
@@ -237,6 +164,9 @@ void LayerObserver::onCommittedFeaturesRemoved( const QString &localLayerId, con
 
 void LayerObserver::onCommittedAttributeValuesChanges( const QString &localLayerId, const QgsChangedAttributesMap &changedAttributesValues )
 {
+  if ( mDeltaFileWrapper->isDeltaBeingApplied() )
+    return;
+
   QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( sender() );
   QgsFeatureIds patchedFids = mPatchedFids.value( localLayerId );
   QgsChangedFeatures changedFeatures = mChangedFeatures.value( localLayerId );
@@ -244,9 +174,6 @@ void LayerObserver::onCommittedAttributeValuesChanges( const QString &localLayer
   const QString sourceLayerId = DeltaFileWrapper::getSourceLayerId( vl );
   const QPair<int, QString> localPkAttrPair = DeltaFileWrapper::getLocalPkAttribute( vl );
   const QPair<int, QString> sourcePkAttrPair = DeltaFileWrapper::getSourcePkAttribute( vl );
-
-  if ( mCommittedDeltaFileWrapper->isDeltaBeingApplied() )
-    return;
 
   for ( const QgsFeatureId &fid : changedAttributesValuesFids )
   {
@@ -259,7 +186,7 @@ void LayerObserver::onCommittedAttributeValuesChanges( const QString &localLayer
 
     QgsFeature oldFeature = changedFeatures.take( fid );
     QgsFeature newFeature = vl->getFeature( fid );
-    mCurrentDeltaFileWrapper->addPatch( localLayerId, sourceLayerId, localPkAttrPair.second, sourcePkAttrPair.second, oldFeature, newFeature );
+    mDeltaFileWrapper->addPatch( localLayerId, sourceLayerId, localPkAttrPair.second, sourcePkAttrPair.second, oldFeature, newFeature );
   }
 
   mPatchedFids.insert( localLayerId, patchedFids );
@@ -269,6 +196,9 @@ void LayerObserver::onCommittedAttributeValuesChanges( const QString &localLayer
 
 void LayerObserver::onCommittedGeometriesChanges( const QString &localLayerId, const QgsGeometryMap &changedGeometries )
 {
+  if ( mDeltaFileWrapper->isDeltaBeingApplied() )
+    return;
+
   QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( sender() );
   QgsFeatureIds patchedFids = mPatchedFids.value( localLayerId );
   QgsChangedFeatures changedFeatures = mChangedFeatures.value( localLayerId );
@@ -276,9 +206,6 @@ void LayerObserver::onCommittedGeometriesChanges( const QString &localLayerId, c
   const QString sourceLayerId = DeltaFileWrapper::getSourceLayerId( vl );
   const QPair<int, QString> localPkAttrPair = DeltaFileWrapper::getLocalPkAttribute( vl );
   const QPair<int, QString> sourcePkAttrPair = DeltaFileWrapper::getSourcePkAttribute( vl );
-
-  if ( mCommittedDeltaFileWrapper->isDeltaBeingApplied() )
-    return;
 
   for ( const QgsFeatureId &fid : changedGeometriesFids )
   {
@@ -292,7 +219,7 @@ void LayerObserver::onCommittedGeometriesChanges( const QString &localLayerId, c
     QgsFeature oldFeature = changedFeatures.take( fid );
     QgsFeature newFeature = vl->getFeature( fid );
 
-    mCurrentDeltaFileWrapper->addPatch( localLayerId, sourceLayerId, localPkAttrPair.second, sourcePkAttrPair.second, oldFeature, newFeature );
+    mDeltaFileWrapper->addPatch( localLayerId, sourceLayerId, localPkAttrPair.second, sourcePkAttrPair.second, oldFeature, newFeature );
   }
 
   mPatchedFids.insert( localLayerId, patchedFids );
@@ -308,7 +235,7 @@ void LayerObserver::onEditingStopped( )
   mPatchedFids.take( layerId );
   mChangedFeatures.take( layerId );
 
-  if ( ! mCurrentDeltaFileWrapper->toFile() )
+  if ( ! mDeltaFileWrapper->toFile() )
   {
     // TODO somehow indicate the user that writing failed
     QgsMessageLog::logMessage( QStringLiteral( "Failed writing JSON file" ) );

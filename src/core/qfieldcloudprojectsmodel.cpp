@@ -53,10 +53,6 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel() :
       return;
 
     refreshProjectModification( mCurrentProjectId );
-
-    updateCanCommitCurrentProject();
-    updateCanSyncCurrentProject();
-    updateCurrentProjectChangesCount();
   } );
 
   connect( this, &QFieldCloudProjectsModel::modelReset, this, [ = ]()
@@ -69,10 +65,6 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel() :
     emit currentProjectDataChanged();
 
     refreshProjectModification( mCurrentProjectId );
-
-    updateCanCommitCurrentProject();
-    updateCanSyncCurrentProject();
-    updateCurrentProjectChangesCount();
   } );
 
   connect( this, &QFieldCloudProjectsModel::dataChanged, this, [ = ]( const QModelIndex & topLeft, const QModelIndex & bottomRight, const QVector<int> &roles )
@@ -84,10 +76,6 @@ QFieldCloudProjectsModel::QFieldCloudProjectsModel() :
 
     if ( index == -1 || index >= mCloudProjects.size() )
       return;
-
-    updateCanCommitCurrentProject();
-    updateCanSyncCurrentProject();
-    updateCurrentProjectChangesCount();
 
     // current project
     if ( topLeft.row() == index )
@@ -130,12 +118,9 @@ void QFieldCloudProjectsModel::setLayerObserver( LayerObserver *layerObserver )
     return;
 
   connect( layerObserver, &LayerObserver::layerEdited, this, &QFieldCloudProjectsModel::layerObserverLayerEdited );
-  connect( layerObserver, &LayerObserver::deltaFileCommitted, this, [ = ]()
+  connect( layerObserver->deltaFileWrapper(), &DeltaFileWrapper::countChanged, this, [ = ]()
   {
     refreshProjectModification( mCurrentProjectId );
-    updateCanCommitCurrentProject();
-    updateCanSyncCurrentProject();
-    updateCurrentProjectChangesCount();
   } );
 
   emit layerObserverChanged();
@@ -249,7 +234,7 @@ void QFieldCloudProjectsModel::removeLocalProject( const QString &projectId )
   QSettings().remove( QStringLiteral( "QFieldCloud/projects/%1" ).arg( projectId ) );
 }
 
-QFieldCloudProjectsModel::ProjectStatus QFieldCloudProjectsModel::projectStatus( const QString &projectId )
+QFieldCloudProjectsModel::ProjectStatus QFieldCloudProjectsModel::projectStatus( const QString &projectId ) const
 {
   const int index = findProject( projectId );
 
@@ -259,78 +244,19 @@ QFieldCloudProjectsModel::ProjectStatus QFieldCloudProjectsModel::projectStatus(
   return mCloudProjects[index].status;
 }
 
-bool QFieldCloudProjectsModel::canCommitCurrentProject()
+bool QFieldCloudProjectsModel::canSyncProject( const QString &projectId ) const
 {
-  return mCanCommitCurrentProject;
-}
+  const int index = findProject( projectId );
 
-void QFieldCloudProjectsModel::updateCanCommitCurrentProject()
-{
-  bool oldCanCommitCurrentProject = mCanCommitCurrentProject;
+  if ( index == -1 || index >= mCloudProjects.size() )
+    return false;
 
   if ( mCurrentProjectId.isEmpty() )
-  {
-    mCanCommitCurrentProject = false;
-  }
-  else if ( projectStatus( mCurrentProjectId ) == ProjectStatus::Idle )
-  {
-    DeltaFileWrapper *currentDeltaFileWrapper = mLayerObserver->currentDeltaFileWrapper();
+    return false;
+  else if ( projectStatus( projectId ) == ProjectStatus::Idle )
+    return true;
 
-    mCanCommitCurrentProject = ( currentDeltaFileWrapper->count() > 0 );
-  }
-  else
-  {
-    mCanCommitCurrentProject = false;
-  }
-
-  if ( oldCanCommitCurrentProject != mCanCommitCurrentProject )
-    emit canCommitCurrentProjectChanged();
-}
-
-bool QFieldCloudProjectsModel::canSyncCurrentProject()
-{
-  return mCanSyncCurrentProject;
-}
-
-void QFieldCloudProjectsModel::updateCanSyncCurrentProject()
-{
-  bool oldCanSyncCurrentProject = mCanSyncCurrentProject;
-
-  if ( mCurrentProjectId.isEmpty() )
-    mCanSyncCurrentProject = false;
-  else if ( projectStatus( mCurrentProjectId ) == ProjectStatus::Idle )
-    mCanSyncCurrentProject = true;
-  // In the future we might have a smarter mechanism whether there is RemoteModificationr
-  else if ( projectStatus( mCurrentProjectId ) == ProjectStatus::Idle
-            && projectModification( mCurrentProjectId ) & RemoteModification )
-    mCanSyncCurrentProject = true;
-  else
-    mCanSyncCurrentProject = false;
-
-  if ( oldCanSyncCurrentProject != mCanSyncCurrentProject )
-    emit canSyncCurrentProjectChanged();
-}
-
-void QFieldCloudProjectsModel::updateCurrentProjectChangesCount()
-{
-  const DeltaFileWrapper *currentDeltaFileWrapper = mLayerObserver->currentDeltaFileWrapper();
-  const DeltaFileWrapper *committedDeltaFileWrapper = mLayerObserver->committedDeltaFileWrapper();
-
-  Q_ASSERT( committedDeltaFileWrapper );
-  Q_ASSERT( currentDeltaFileWrapper );
-
-  int count = currentDeltaFileWrapper->count() + committedDeltaFileWrapper->count();
-
-  if ( count != mCurrentProjectChangesCount )
-  {
-    mCurrentProjectChangesCount = count;
-    emit currentProjectChangesCountChanged();
-  }
-}
-
-int QFieldCloudProjectsModel::currentProjectChangesCount() const
-{
-  return mCurrentProjectChangesCount;
+  return false;
 }
 
 QFieldCloudProjectsModel::ProjectModifications QFieldCloudProjectsModel::projectModification( const QString &projectId ) const
@@ -352,8 +278,7 @@ void QFieldCloudProjectsModel::refreshProjectModification( const QString &projec
 
   ProjectModifications oldModifications = mCloudProjects[index].modification;
 
-  if ( mLayerObserver->currentDeltaFileWrapper()->count() > 0
-       || mLayerObserver->committedDeltaFileWrapper()->count() > 0 )
+  if ( mLayerObserver->deltaFileWrapper()->count() > 0 )
     mCloudProjects[index].modification |= LocalModification;
   else if ( mCloudProjects[index].modification & LocalModification )
     mCloudProjects[index].modification ^= LocalModification;
@@ -361,7 +286,7 @@ void QFieldCloudProjectsModel::refreshProjectModification( const QString &projec
   if ( oldModifications != mCloudProjects[index].modification )
   {
     QModelIndex idx = createIndex( index, 0 );
-    emit dataChanged( idx, idx, QVector<int>() << ModificationRole );
+    emit dataChanged( idx, idx, QVector<int>() << ModificationRole << CanSyncRole );
   }
 }
 
@@ -778,7 +703,9 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   if ( !( mCloudProjects[index].status == ProjectStatus::Idle ) )
     return;
 
-  if ( shouldDownloadUpdates && mCurrentProjectChangesCount == 0 )
+  DeltaFileWrapper *deltaFileWrapper = mLayerObserver->deltaFileWrapper();
+
+  if ( shouldDownloadUpdates && deltaFileWrapper->count() == 0 )
   {
     downloadProject( projectId );
     return;
@@ -787,23 +714,19 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   if ( !( mCloudProjects[index].modification & LocalModification ) )
     return;
 
-  if ( ! mLayerObserver->commit() )
-  {
-    QgsMessageLog::logMessage( QStringLiteral( "Failed to commit changes." ) );
+  if ( ! mLayerObserver->deltaFileWrapper()->toFile() )
     return;
-  }
 
   QModelIndex idx = createIndex( index, 0 );
-  DeltaFileWrapper *deltaFile = mLayerObserver->committedDeltaFileWrapper();
 
-  if ( deltaFile->hasError() )
+  if ( deltaFileWrapper->hasError() )
   {
-    QgsMessageLog::logMessage( QStringLiteral( "The delta file has an error: %1" ).arg( deltaFile->errorString() ) );
+    QgsMessageLog::logMessage( QStringLiteral( "The delta file has an error: %1" ).arg( deltaFileWrapper->errorString() ) );
     return;
   }
 
   mCloudProjects[index].status = ProjectStatus::Uploading;
-  mCloudProjects[index].deltaFileId = deltaFile->id();
+  mCloudProjects[index].deltaFileId = deltaFileWrapper->id();
   mCloudProjects[index].deltaFileUploadStatus = DeltaFileLocalStatus;
   mCloudProjects[index].deltaFileUploadStatusString = QString();
 
@@ -812,16 +735,13 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   mCloudProjects[index].uploadAttachmentsFailed = 0;
 
   refreshProjectModification( projectId );
-  updateCanCommitCurrentProject();
-  updateCanSyncCurrentProject();
-  updateCurrentProjectChangesCount();
 
   emit dataChanged( idx, idx,  QVector<int>() << StatusRole << UploadAttachmentsProgressRole << UploadDeltaProgressRole << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
 
   // //////////
   // prepare attachment files to be uploaded
   // //////////
-  const QStringList attachmentFileNames = deltaFile->attachmentFileNames().keys();
+  const QStringList attachmentFileNames = deltaFileWrapper->attachmentFileNames().keys();
   for ( const QString &fileName : attachmentFileNames )
   {
     QFileInfo fileInfo( fileName );
@@ -840,7 +760,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     mCloudProjects[index].uploadAttachmentsBytesTotal += fileSize;
   }
 
-  QString deltaFileToUpload = deltaFile->toFileForUpload();
+  QString deltaFileToUpload = deltaFileWrapper->toFileForUpload();
 
   if ( deltaFileToUpload.isEmpty() )
   {
@@ -887,7 +807,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
     mCloudProjects[index].uploadDeltaProgress = 1;
     mCloudProjects[index].deltaFileUploadStatus = DeltaFilePendingStatus;
-    mCloudProjects[index].deltaLayersToDownload = deltaFile->deltaLayerIds();
+    mCloudProjects[index].deltaLayersToDownload = deltaFileWrapper->deltaLayerIds();
 
     emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaProgressRole << UploadDeltaStatusRole );
     emit networkDeltaUploaded( projectId );
@@ -918,11 +838,11 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
       mCloudProjects[index].status = ProjectStatus::Idle;
       mCloudProjects[index].modification ^= LocalModification;
 
-      deltaFile->reset();
-      deltaFile->resetId();
+      deltaFileWrapper->reset();
+      deltaFileWrapper->resetId();
 
-      if ( ! deltaFile->toFile() )
-        QgsMessageLog::logMessage( QStringLiteral( "Failed to reset delta file after delta push. %1" ).arg( deltaFile->errorString() ) );
+      if ( ! deltaFileWrapper->toFile() )
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to reset delta file after delta push. %1" ).arg( deltaFileWrapper->errorString() ) );
 
       QModelIndex idx = createIndex( index, 0 );
 
@@ -956,9 +876,9 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         break;
       case DeltaFileErrorStatus:
         delete networkDeltaStatusCheckedParent;
-        deltaFile->resetId();
+        deltaFileWrapper->resetId();
 
-        if ( ! deltaFile->toFile() )
+        if ( ! deltaFileWrapper->toFile() )
           QgsMessageLog::logMessage( QStringLiteral( "Failed update committed delta file." ) );
 
         projectCancelUpload( projectId );
@@ -966,11 +886,11 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
       case DeltaFileAppliedStatus:
         delete networkDeltaStatusCheckedParent;
 
-        deltaFile->reset();
-        deltaFile->resetId();
+        deltaFileWrapper->reset();
+        deltaFileWrapper->resetId();
 
-        if ( ! deltaFile->toFile() )
-          QgsMessageLog::logMessage( QStringLiteral( "Failed to reset delta file. %1" ).arg( deltaFile->errorString() ) );
+        if ( ! deltaFileWrapper->toFile() )
+          QgsMessageLog::logMessage( QStringLiteral( "Failed to reset delta file. %1" ).arg( deltaFileWrapper->errorString() ) );
 
         mCloudProjects[index].status = ProjectStatus::Idle;
         mCloudProjects[index].modification ^= LocalModification;
@@ -1194,11 +1114,11 @@ void QFieldCloudProjectsModel::layerObserverLayerEdited( const QString &layerId 
 
   beginResetModel();
 
-  const DeltaFileWrapper *committedDeltaFileWrapper = mLayerObserver->committedDeltaFileWrapper();
+  const DeltaFileWrapper *deltaFileWrapper = mLayerObserver->deltaFileWrapper();
 
-  Q_ASSERT( committedDeltaFileWrapper );
+  Q_ASSERT( deltaFileWrapper );
 
-  if ( committedDeltaFileWrapper->count() > 0 )
+  if ( deltaFileWrapper->count() > 0 )
     mCloudProjects[index].modification |= LocalModification;
   else if ( mCloudProjects[index].modification & LocalModification )
     mCloudProjects[index].modification ^= LocalModification;
@@ -1253,6 +1173,7 @@ QHash<int, QByteArray> QFieldCloudProjectsModel::roleNames() const
   roles[UploadDeltaStatusStringRole] = "UploadDeltaStatusString";
   roles[LocalDeltasCountRole] = "LocalDeltasCount";
   roles[LocalPathRole] = "LocalPath";
+  roles[CanSyncRole] = "CanSync";
   return roles;
 }
 
@@ -1285,8 +1206,7 @@ void QFieldCloudProjectsModel::reload( const QJsonArray &remoteProjects )
     {
       cloudProject.checkout = LocalAndRemoteCheckout;
       cloudProject.localPath = QFieldCloudUtils::localProjectFilePath( cloudProject.id );
-      cloudProject.currentDeltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile.json" ).arg( localPath.absolutePath() ) ).count();
-      cloudProject.committedDeltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile_committed.json" ).arg( localPath.absolutePath() ) ).count();
+      cloudProject.deltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile.json" ).arg( localPath.absolutePath() ) ).count();
     }
 
     mCloudProjects << cloudProject;
@@ -1314,8 +1234,7 @@ void QFieldCloudProjectsModel::reload( const QJsonArray &remoteProjects )
     CloudProject cloudProject( projectId, owner, name, description, QString(), LocalCheckout, ProjectStatus::Idle );
     QDir localPath( QStringLiteral( "%1/%2" ).arg( QFieldCloudUtils::localCloudDirectory(), cloudProject.id ) );
     cloudProject.localPath = QFieldCloudUtils::localProjectFilePath( cloudProject.id );
-    cloudProject.currentDeltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile.json" ).arg( localPath.absolutePath() ) ).count();
-    cloudProject.committedDeltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile_committed.json" ).arg( localPath.absolutePath() ) ).count();
+    cloudProject.deltasCount = DeltaFileWrapper( qgisProject, QStringLiteral( "%1/deltafile.json" ).arg( localPath.absolutePath() ) ).count();
 
     mCloudProjects << cloudProject;
 
@@ -1376,9 +1295,11 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
     case UploadDeltaStatusStringRole:
       return mCloudProjects.at( index.row() ).deltaFileUploadStatusString;
     case LocalDeltasCountRole:
-      return mCloudProjects.at( index.row() ).currentDeltasCount + mCloudProjects.at( index.row() ).committedDeltasCount;
+      return mCloudProjects.at( index.row() ).deltasCount;
     case LocalPathRole:
       return mCloudProjects.at( index.row() ).localPath;
+    case CanSyncRole:
+      return canSyncProject( mCloudProjects.at( index.row() ).id );
   }
 
   return QVariant();
@@ -1391,15 +1312,12 @@ bool QFieldCloudProjectsModel::revertLocalChangesFromCurrentProject()
   if ( index == -1 || index >= mCloudProjects.size() )
     return false;
 
-  if ( ! mLayerObserver->commit() )
-  {
-    QgsMessageLog::logMessage( QStringLiteral( "Failed to commit" ) );
+  DeltaFileWrapper *deltaFileWrapper = mLayerObserver->deltaFileWrapper();
+
+  if ( ! deltaFileWrapper->toFile() )
     return false;
-  }
 
-  DeltaFileWrapper *dfw = mLayerObserver->committedDeltaFileWrapper();
-
-  if ( ! dfw->applyReversed() )
+  if ( ! deltaFileWrapper->applyReversed() )
   {
     QgsMessageLog::logMessage( QStringLiteral( "Failed to apply reversed" ) );
     return false;
@@ -1407,14 +1325,10 @@ bool QFieldCloudProjectsModel::revertLocalChangesFromCurrentProject()
 
   mCloudProjects[index].modification ^= LocalModification;
 
-  dfw->reset();
-  dfw->resetId();
+  deltaFileWrapper->reset();
+  deltaFileWrapper->resetId();
 
-  updateCanCommitCurrentProject();
-  updateCanSyncCurrentProject();
-  updateCurrentProjectChangesCount();
-
-  if ( ! dfw->toFile() )
+  if ( ! deltaFileWrapper->toFile() )
     return false;
 
   return true;
@@ -1427,25 +1341,17 @@ bool QFieldCloudProjectsModel::discardLocalChangesFromCurrentProject()
   if ( index == -1 || index >= mCloudProjects.size() )
     return false;
 
-  DeltaFileWrapper *dfwCurrent = mLayerObserver->committedDeltaFileWrapper();
-  DeltaFileWrapper *dfwCommitted = mLayerObserver->committedDeltaFileWrapper();
+  DeltaFileWrapper *deltaFileWrapper = mLayerObserver->deltaFileWrapper();
 
-  if ( ! mLayerObserver->commit() )
-    QgsMessageLog::logMessage( QStringLiteral( "Failed to commit" ) );
+  if ( ! deltaFileWrapper->toFile() )
+    QgsMessageLog::logMessage( QStringLiteral( "Failed to write deltas." ) );
 
   mCloudProjects[index].modification ^= LocalModification;
 
-  dfwCurrent->reset();
-  dfwCurrent->resetId();
+  deltaFileWrapper->reset();
+  deltaFileWrapper->resetId();
 
-  dfwCommitted->reset();
-  dfwCommitted->resetId();
-
-  updateCanCommitCurrentProject();
-  updateCanSyncCurrentProject();
-  updateCurrentProjectChangesCount();
-
-  if ( ! dfwCurrent->toFile() || ! dfwCommitted->toFile() )
+  if ( ! deltaFileWrapper->toFile() )
     return false;
 
   return true;

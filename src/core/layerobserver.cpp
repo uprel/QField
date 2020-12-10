@@ -30,7 +30,7 @@
 LayerObserver::LayerObserver( const QgsProject *project )
   : mProject( project )
 {
-  mDeltaFileWrapper = std::unique_ptr<DeltaFileWrapper>( new DeltaFileWrapper( mProject, QStringLiteral( "%1/deltafile.json" ).arg( mProject->homePath() ) ) );
+  mDeltaFileWrapper = std::make_unique<DeltaFileWrapper>( mProject, QStringLiteral( "%1/deltafile.json" ).arg( mProject->homePath() ) );
 
   connect( mProject, &QgsProject::homePathChanged, this, &LayerObserver::onHomePathChanged );
   connect( mProject, &QgsProject::layersAdded, this, &LayerObserver::onLayersAdded );

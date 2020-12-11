@@ -122,12 +122,12 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     //! The status of the running server job for exporting a project.
     enum DownloadJobStatus
     {
-      DownloadJobErrorStatus,
+      DownloadJobFailedStatus,
       DownloadJobUnstartedStatus,
-      DownloadJobPendingStatus,
       DownloadJobQueuedStatus,
       DownloadJobStartedStatus,
-      DownloadJobCreatedStatus
+      DownloadJobDeferredStatus,
+      DownloadJobFinishedStatus,
     };
 
     Q_ENUM( DownloadJobStatus )

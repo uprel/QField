@@ -62,6 +62,7 @@ Item {
         horizontalAlignment: Text.AlignHCenter
         font: Theme.defaultFont
         color: Theme.errorColor
+        wrapMode: Text.Wrap
 
         Connections {
           target: cloudConnection

@@ -344,6 +344,7 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
 
       QModelIndex idx = createIndex( index, 0 );
       emit dataChanged( idx, idx,  QVector<int>() << StatusRole << DownloadProgressRole );
+      // TODO this should not be a warning, but a meaningful message to the user!
       emit warning( QStringLiteral( "Error fetching project: %1" ).arg( rawReply->errorString() ) );
 
       return;
@@ -424,13 +425,11 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
 
     if ( rawReply->error() != QNetworkReply::NoError )
     {
-      int statusCode = rawReply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
-
       mCloudProjects[index].status = ProjectStatus::Idle;
       mCloudProjects[index].errorStatus = DownloadErrorStatus;
       mCloudProjects[index].downloadJobStatus = DownloadJobFailedStatus;
       // TODO this is oversimplification. e.g. 404 error is when the requested export id is not existent
-      mCloudProjects[index].downloadJobStatusString = QStringLiteral( "[HTTP%1] Networking error, please retry!" ).arg( statusCode );
+      mCloudProjects[index].downloadJobStatusString = QFieldCloudConnection::errorString( rawReply );
 
       emit dataChanged( idx, idx, QVector<int>() << DownloadJobStatusRole );
       emit networkDownloadStatusChecked( projectId );
@@ -573,7 +572,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
       if ( rawReply->error() != QNetworkReply::NoError )
       {
         hasError = true;
-        QgsMessageLog::logMessage( QStringLiteral( "Failed to download project file stored at \"%1\", reason:\n%2" ).arg( fileName, rawReply->errorString() ) );
+        QgsMessageLog::logMessage( QStringLiteral( "Failed to download project file stored at \"%1\", reason:\n%2" ).arg( fileName, QFieldCloudConnection::errorString( rawReply ) ) );
       }
 
       if ( ! hasError && ! file->write( rawReply->readAll() ) )
@@ -797,9 +796,9 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     {
       // TODO check why exactly we failed
       // maybe the project does not exist, then create it?
-      QgsMessageLog::logMessage( QStringLiteral( "Failed to upload delta file, reason:\n%1\n%2" ).arg( deltasReply->errorString(), deltasReply->readAll() ) );
+      QgsMessageLog::logMessage( QStringLiteral( "Failed to upload delta file, reason:\n%1\n%2" ).arg( deltasReply->errorString(), QFieldCloudConnection::errorString( deltasReply ) ) );
 
-      mCloudProjects[index].deltaFileUploadStatusString = deltasReply->errorString();
+      mCloudProjects[index].deltaFileUploadStatusString = QFieldCloudConnection::errorString( deltasReply );
       projectCancelUpload( projectId );
       return;
     }
@@ -967,11 +966,9 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
     if ( rawReply->error() != QNetworkReply::NoError )
     {
-      int statusCode = rawReply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
-
       mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
       // TODO this is oversimplification. e.g. 404 error is when the requested delta file id is not existant
-      mCloudProjects[index].deltaFileUploadStatusString = QStringLiteral( "[HTTP%1] Networking error, please retry!" ).arg( statusCode );
+      mCloudProjects[index].deltaFileUploadStatusString = QFieldCloudConnection::errorString( rawReply );
 
       emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
       emit networkDeltaStatusChecked( projectId );
@@ -1047,7 +1044,7 @@ void QFieldCloudProjectsModel::projectUploadAttachments( const QString &projectI
         mCloudProjects[index].uploadAttachmentsFailed++;
         QgsMessageLog::logMessage( tr( "Failed to upload attachment stored at \"%1\", reason:\n%2" )
                             .arg( fileName )
-                            .arg( attachmentReply->errorString() ) );
+                            .arg( QFieldCloudConnection::errorString( attachmentReply ) ) );
       }
 
       mCloudProjects[index].uploadAttachmentsFinished++;

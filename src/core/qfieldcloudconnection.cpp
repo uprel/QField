@@ -35,6 +35,43 @@ QFieldCloudConnection::QFieldCloudConnection()
 {
 }
 
+QString QFieldCloudConnection::errorString( QNetworkReply *reply )
+{
+  if ( !reply )
+    return QString();
+
+  if ( reply->error() == QNetworkReply::NoError )
+    return QString();
+
+  QJsonParseError jsonError;
+  const QJsonObject doc = QJsonDocument::fromJson( reply->readAll(), &jsonError ).object();
+
+  QString errorMessage;
+  if ( jsonError.error == QJsonParseError::NoError )
+  {
+    if ( doc.contains( QStringLiteral( "detail" ) ) )
+      errorMessage += doc.value( QStringLiteral( "detail" ) ).toString();
+    else
+      errorMessage += QStringLiteral( "<no server details>" );
+
+    if ( errorMessage.isEmpty() )
+      errorMessage += QStringLiteral( "<empty server details>" );
+  }
+  else
+  {
+    errorMessage += tr( "Cannot read JSON from failed request: %1. " ).arg( jsonError.errorString() );
+  }
+
+  int httpCode = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
+  errorMessage += QStringLiteral( "[HTTP/%1] %2 " ).arg( httpCode ).arg( reply->errorString() );
+
+  errorMessage += ( httpCode > 400 )
+      ? tr( "Server Error." )
+      : tr( "Network Error." );
+
+  return errorMessage;
+}
+
 QString QFieldCloudConnection::url() const
 {
   return mUrl;
@@ -125,17 +162,12 @@ void QFieldCloudConnection::login()
       {
         emit loginFailed( tr( "Wrong username or password" ) );
       }
-      else if ( httpCode > 400 )
-      {
-        emit loginFailed( tr( "Server error, please retry" ) );
-        QgsMessageLog::logMessage( QStringLiteral( "%1 (HTTP Status %2)" ).arg( rawReply->errorString() ).arg( httpCode ) );
-      }
       else
       {
-        emit loginFailed( tr( "Network error, please retry" ) );
-        QgsMessageLog::logMessage( QStringLiteral( "%1 (HTTP Status %2)" ).arg( rawReply->errorString() ).arg( httpCode ) );
+        QString message( errorString( rawReply ) );
+        emit loginFailed( message );
+        QgsMessageLog::logMessage( message );
       }
-
       setStatus( ConnectionStatus::Disconnected );
       return;
     }

@@ -57,6 +57,11 @@ class QFieldCloudConnection : public QObject
     Q_PROPERTY( bool hasToken READ hasToken NOTIFY tokenChanged )
 
     /**
+     * Returns an error string to be shown to the user if \a reply has an error.
+     */
+    static QString errorString( QNetworkReply *reply );
+
+    /**
      * Returns the currently set server connection URL.
      */
     QString url() const;

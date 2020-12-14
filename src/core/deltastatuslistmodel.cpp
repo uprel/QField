@@ -45,7 +45,7 @@ DeltaStatusListModel::DeltaStatusListModel( QJsonDocument deltasStatusList )
     }
 
     const QJsonObject deltaObject = delta.toObject();
-    const QStringList requiredKeys({"id", "deltafile_id", "created_at", "updated_at", "status", "output"});
+    const QStringList requiredKeys({"id", "deltafile_id", "created_at", "updated_at", "status"});
     for ( const QString &requiredKey : requiredKeys )
     {
       if ( deltaObject.value( requiredKey ).isNull() || deltaObject.value( requiredKey ).isUndefined() )

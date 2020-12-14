@@ -45,13 +45,13 @@ DeltaStatusListModel::DeltaStatusListModel( QJsonDocument deltasStatusList )
     }
 
     const QJsonObject deltaObject = delta.toObject();
-    const QStringList requiredKeys({"id", "deltafile_id", "created_at", "updated_at", "status", "output"});
+    const QStringList requiredKeys({"id", "deltafile_id", "created_at", "updated_at", "status"});
     for ( const QString &requiredKey : requiredKeys )
     {
       if ( deltaObject.value( requiredKey ).isNull() || deltaObject.value( requiredKey ).isUndefined() )
       {
         mIsValid = false;
-        mErrorString = QStringLiteral( "Expected all array elements to be an object containing a key \"%1\", but the element at #%2 is not" ).arg( requiredKey, mDeltas.size() );
+        mErrorString = QStringLiteral( "Expected all array elements to be an object containing a key \"%1\", but the element at #%2 is not" ).arg( requiredKey ).arg( mDeltas.size() );
         return;
       }
     }

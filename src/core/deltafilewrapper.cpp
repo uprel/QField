@@ -54,8 +54,12 @@ DeltaFileWrapper::DeltaFileWrapper( const QgsProject *project, const QString &fi
   mFileName = fileInfo.canonicalFilePath().isEmpty() ? fileInfo.absoluteFilePath() : fileInfo.canonicalFilePath();
   mErrorType = DeltaFileWrapper::NoError;
 
+#if 0
+//  TODO enable this code once we have a single delta pointer stored per project and passed to the layer observer.
+//  Now both the qfieldcloudprojects model (Read only) and the layer observer (Read/Write) create their pointers to the deltafilewrapper
   if ( mErrorType == DeltaFileWrapper::NoError && sFileLocks()->contains( mFileName ) )
     mErrorType = DeltaFileWrapper::LockError;
+#endif
 
   if ( mErrorType == DeltaFileWrapper::NoError )
     mCloudProjectId = QFieldCloudUtils::getProjectId( mProject );

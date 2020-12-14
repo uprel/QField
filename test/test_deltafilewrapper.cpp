@@ -89,6 +89,9 @@ class TestDeltaFileWrapper: public QObject
     }
 
 
+#if 0
+//  TODO enable this code once we have a single delta pointer stored per project and passed to the layer observer.
+//  Now both the qfieldcloudprojects model (Read only) and the layer observer (Read/Write) create their pointers to the deltafilewrapper
     void testNoMoreThanOneInstance()
     {
       QString fileName( std::tmpnam( nullptr ) );
@@ -100,6 +103,7 @@ class TestDeltaFileWrapper: public QObject
 
       QCOMPARE( dfw2.errorType(), DeltaFileWrapper::LockError );
     }
+#endif
 
 
     void testNoErrorExistingFile()

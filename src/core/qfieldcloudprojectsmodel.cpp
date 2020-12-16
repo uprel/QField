@@ -581,11 +581,13 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
         QgsMessageLog::logMessage( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
       }
 
+
       if ( hasError )
       {
         mCloudProjects[index].downloadFilesFailed++;
-        mCloudProjects[index].status = ProjectStatus::Idle;
         mCloudProjects[index].errorStatus = DownloadErrorStatus;
+
+        rolesChanged << StatusRole << LocalPathRole << CheckoutRole;
 
         emit projectDownloaded( projectId, true, mCloudProjects[index].name );
       }
@@ -612,6 +614,11 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
             mGpkgFlusher->start( fileName );
 
           mProject->setFileName( projectFileName );
+
+          mCloudProjects[index].checkout = ProjectCheckout::LocalAndRemoteCheckout;
+          mCloudProjects[index].localPath = QFieldCloudUtils::localProjectFilePath( projectId );
+
+          emit projectDownloaded( projectId, false, mCloudProjects[index].name );
         }
 
         for ( const QString &fileName : fileNames )
@@ -619,17 +626,12 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
           mCloudProjects[index].downloadFileTransfers[fileName].networkReply->deleteLater();
         }
 
-        emit projectDownloaded( projectId, false, mCloudProjects[index].name );
-
         mCloudProjects[index].status = ProjectStatus::Idle;
-        mCloudProjects[index].checkout = ProjectCheckout::LocalAndRemoteCheckout;
-        mCloudProjects[index].localPath = QFieldCloudUtils::localProjectFilePath( projectId );
-
-        rolesChanged << StatusRole << LocalPathRole << CheckoutRole;
       }
 
-      QModelIndex idx = createIndex( index, 0 );
 
+      QModelIndex idx = createIndex( index, 0 );
+      rolesChanged << StatusRole << LocalPathRole << CheckoutRole;
       emit dataChanged( idx, idx, rolesChanged );
     } );
   }

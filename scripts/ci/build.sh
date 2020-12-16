@@ -24,7 +24,7 @@ elif [[ ${CI_PULL_REQUEST} = false ]]; then
   # get numbers of masters commits
   NUMBER_OF_COMMITS=$(curl -I -k "https://api.github.com/repos/opengisch/QField/commits?per_page=1&sha=${CURRENT_COMMIT}" | sed -n '/^[Ll]ink:/ s/.*"next".*page=\([0-9]*\).*"last".*/\1/p')
   echo "Building dev (nightly)"
-  export APP_NAME="QField Dev"
+  export APP_NAME="${CUSTOM_APP_NAME:-QField Dev}"
   CUSTOM_APP_PACKAGE_NAME=$(echo ${NIGHTLY_PACKAGE_NAME} | awk '{print $NF}' FS=.)
   export APP_PACKAGE_NAME="${CUSTOM_APP_PACKAGE_NAME:-qfield_dev}"
   export APP_ICON="qfield_logo_beta"

@@ -46,6 +46,7 @@ jobs:
     env:
       TX_TOKEN: ${{ secrets.TX_TOKEN }}
       NIGHTLY_PACKAGE_NAME: ${{ secrets.NIGHTLY_PACKAGE_NAME }}
+      CUSTOM_APP_NAME: ${{ secrets.CUSTOM_APP_NAME }}
     strategy:
       matrix:
         arch: [armv7, arm64_v8a, x86, x86_64]

@@ -33,6 +33,7 @@ QFieldCloudConnection::QFieldCloudConnection()
   : mUrl( QSettings().value( QStringLiteral( "/QFieldCloud/url" ), defaultUrl() ).toString() )
   , mToken( QSettings().value( QStringLiteral( "/QFieldCloud/token" ) ).toByteArray() )
 {
+  QgsNetworkAccessManager::instance()->setTimeout( 10 * 60 * 1000 );
 }
 
 QString QFieldCloudConnection::errorString( QNetworkReply *reply )

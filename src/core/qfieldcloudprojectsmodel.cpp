@@ -581,6 +581,8 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
         QgsMessageLog::logMessage( QStringLiteral( "Failed to write downloaded file stored at \"%1\", reason:\n%2" ).arg( fileName ).arg( file->errorString() ) );
       }
 
+      hasError = hasError || mCloudProjects[index].downloadFilesFailed > 0;
+
       if ( hasError )
       {
         mCloudProjects[index].downloadFilesFailed++;

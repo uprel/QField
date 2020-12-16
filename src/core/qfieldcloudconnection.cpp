@@ -34,7 +34,9 @@ QFieldCloudConnection::QFieldCloudConnection()
   , mToken( QSettings().value( QStringLiteral( "/QFieldCloud/token" ) ).toByteArray() )
 {
   QgsNetworkAccessManager::instance()->setTimeout( 60 * 60 * 1000 );
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
   QgsNetworkAccessManager::instance()->setTransferTimeout( 5 * 60 * 1000 );
+#endif
 }
 
 QString QFieldCloudConnection::errorString( QNetworkReply *reply )
@@ -348,4 +350,3 @@ void QFieldCloudConnection::setAuthenticationToken( QNetworkRequest &request )
     request.setRawHeader( "Authorization", "Token " + mToken );
   }
 }
-

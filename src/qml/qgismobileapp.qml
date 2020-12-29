@@ -117,7 +117,15 @@ ApplicationWindow {
         displayToast( qsTr( 'You are now in browse mode' ) );
         break;
       case 'digitize':
-        displayToast( qsTr( 'You are now in digitize mode' ) );
+        dashBoard.ensureEditableLayerSelected();
+        if (dashBoard.currentLayer)
+        {
+          displayToast( qsTr( 'You are now in digitize mode on layer %1' ).arg( dashBoard.currentLayer.name ) );
+        }
+        else
+        {
+          displayToast( qsTr( 'You are now in digitize mode' ) );
+        }
         break;
       case 'measure':
         displayToast( qsTr( 'You are now in measure mode' ) );
@@ -138,6 +146,7 @@ ApplicationWindow {
     destinationCrs: mapCanvas.mapSettings.destinationCrs
     deltaZ: positioningSettings.antennaHeightActivated ? positioningSettings.antennaHeight * -1 : 0
     skipAltitudeTransformation: positioningSettings.skipAltitudeCorrection
+    device: settings.value("positioningDevice", "")
   }
 
   Item {
@@ -182,7 +191,7 @@ ApplicationWindow {
 
     HoverHandler {
         id: hoverHandler
-        enabled: !qfieldSettings.mouseAsTouchScreen && !parent.isBeingTouched && !digitizingToolbar.rubberbandModel.frozen
+        enabled: !qfieldSettings.mouseAsTouchScreen && !gpsLinkButton.linkActive && !parent.isBeingTouched && !digitizingToolbar.rubberbandModel.frozen
         acceptedDevices: PointerDevice.Stylus | PointerDevice.Mouse
         grabPermissions: PointerHandler.TakeOverForbidden
 
@@ -272,27 +281,44 @@ ApplicationWindow {
       anchors.fill: parent
 
       onClicked:  {
-        if (locatorItem.state == "on") {
-          locatorItem.state = "off"
-        }
-        else if (geometryEditorsToolbar.canvasClicked(point)) {
-          // for instance, the vertex editor will select a vertex if possible
-        }
-        else if ( type === "stylus" && ( ( stateMachine.state === "digitize" && dashBoard.currentLayer ) || stateMachine.state === 'measure' ) ) {
-          if ( Number( currentRubberband.model.geometryType ) === QgsWkbTypes.PointGeometry ||
-              Number( currentRubberband.model.geometryType ) === QgsWkbTypes.NullGeometry )
+          // Check if geometry editor is taking over
+          if ( geometryEditorsToolbar.canvasClicked(point) )
+              return;
+
+          if (locatorItem.state == "on")
           {
-            digitizingToolbar.confirm()
+              locatorItem.state = "off"
           }
-          else
+          else if ( type === "stylus" )
           {
-            currentRubberband.model.addVertex()
-            coordinateLocator.flash()
+              if ( ( ( stateMachine.state === "digitize" && dashBoard.currentLayer ) || stateMachine.state === 'measure' ) )
+              {
+                  if ( Number( currentRubberband.model.geometryType ) === QgsWkbTypes.PointGeometry ||
+                          Number( currentRubberband.model.geometryType ) === QgsWkbTypes.NullGeometry )
+                  {
+                      digitizingToolbar.confirm()
+                  }
+                  else
+                  {
+                      currentRubberband.model.addVertex()
+                      coordinateLocator.flash()
+                  }
+              }
+              else
+              {
+                  if( !overlayFeatureFormDrawer.visible )
+                  {
+                      identifyTool.identify(point)
+                  }
+              }
           }
-        }
-        else if( !overlayFeatureFormDrawer.visible ) {
-          identifyTool.identify(point)
-        }
+      }
+
+      onConfirmedClicked: {
+          if( !overlayFeatureFormDrawer.visible )
+          {
+              identifyTool.identify(point)
+          }
       }
 
       onLongPressed: {
@@ -449,10 +475,10 @@ ApplicationWindow {
       id: locationMarker
       mapSettings: mapCanvas.mapSettings
       anchors.fill: parent
-      visible: positionSource.active && positionSource.position.latitudeValid
+      visible: positionSource.active && positionSource.positionInfo && positionSource.positionInfo.latitudeValid
       location: positionSource.projectedPosition
       accuracy: positionSource.projectedHorizontalAccuracy
-      direction: positionSource.position.directionValid ? positionSource.position.direction : -1
+      direction: positionSource.positionInfo && positionSource.positionInfo.directionValid ? positionSource.positionInfo.direction : -1
 
       onLocationChanged: {
         if ( gpsButton.followActive ) {
@@ -556,8 +582,19 @@ ApplicationWindow {
       crs: qgisProject.crs
     }
 
-    x: mapCanvas.width / 2 + 10
-    y: mapCanvas.height / 2 + 22
+    // The position is dynamically calculated to follow the coordinate locator
+    x: {
+        var newX = coordinateLocator.displayPosition.x + 20;
+        if (newX + width > mapCanvas.x + mapCanvas.width)
+            newX -= width + 40;
+        return newX;
+    }
+    y: {
+        var newY = coordinateLocator.displayPosition.y + 10
+        if (newY + height > mapCanvas.y + mapCanvas.height)
+            newY -= height - 20;
+        return newY;
+    }
 
     text: ( qfieldSettings.numericalDigitizingInformation && stateMachine.state === "digitize" ) || stateMachine.state === 'measure' ?
               '%1%2%3%4'
@@ -659,6 +696,38 @@ ApplicationWindow {
       if ( !opened && featureForm.visible )
         featureForm.focus = true
     }
+
+    function ensureEditableLayerSelected() {
+      var firstEditableLayer = null;
+      var currentLayerLocked = false;
+      for (var i = 0; layerTree.rowCount(); i++)
+      {
+        var index = layerTree.index(i,0)
+        if (firstEditableLayer === null)
+        {
+          if (layerTree.data(index,FlatLayerTreeModel.Type) === 'layer' && layerTree.data(index, FlatLayerTreeModel.ReadOnly) === false && layerTree.data(index, FlatLayerTreeModel.GeometryLocked) === false)
+          {
+             firstEditableLayer = layerTree.data(index, FlatLayerTreeModel.VectorLayerPointer);
+          }
+        }
+        if (currentLayer != null && currentLayer === layerTree.data(index, FlatLayerTreeModel.VectorLayerPointer))
+        {
+           if (layerTree.data(index, FlatLayerTreeModel.ReadOnly) === false || layerTree.data(index, FlatLayerTreeModel.GeometryLocked) === false)
+           {
+             currentLayerLocked = true;
+           }
+           else
+           {
+             break;
+           }
+        }
+        if (firstEditableLayer !== null && (currentLayer === null || currentLayerLocked === true))
+        {
+          currentLayer = firstEditableLayer;
+          break;
+        }
+      }
+    }
   }
 
   /* The main menu */
@@ -742,7 +811,7 @@ ApplicationWindow {
     QfToolButton {
       id: freehandButton
       round: true
-      visible: hoverHandler.hovered && stateMachine.state === "digitize"
+      visible: hoverHandler.hovered && !gpsLinkButton.linkActive && stateMachine.state === "digitize"
           && dashBoard.currentLayer
           && dashBoard.currentLayer.isValid
           && ( dashBoard.currentLayer.geometryType() === QgsWkbTypes.PolygonGeometry || dashBoard.currentLayer.geometryType() === QgsWkbTypes.LineGeometry )
@@ -755,7 +824,6 @@ ApplicationWindow {
 
       states: [
         State {
-
           name: "Off"
           PropertyChanges {
             target: freehandButton
@@ -783,6 +851,54 @@ ApplicationWindow {
   }
 
   Column {
+    id: zoomToolbar
+    anchors.right: mapCanvas.right
+    anchors.rightMargin: 4
+    anchors.bottom: mapCanvas.bottom
+    anchors.bottomMargin: ( mapCanvas.height - zoomToolbar.height / 2 ) / 2
+    spacing: 4
+
+    QfToolButton {
+      id: zoomInButton
+      round: true
+      anchors.right: parent.right
+
+      bgcolor: Theme.darkGray
+      iconSource: Theme.getThemeIcon( "ic_add_white_24dp" )
+
+      transform: Scale {
+          origin.x: zoomInButton.width / 1.5
+          origin.y: zoomInButton.height / 1.25
+          xScale: 0.75
+          yScale: 0.75
+      }
+
+      onClicked: {
+          mapCanvasMap.zoomIn(Qt.point(mapCanvas.x + mapCanvas.width / 2,mapCanvas.y + mapCanvas.height / 2));
+      }
+    }
+    QfToolButton {
+      id: zoomOutButton
+      round: true
+      anchors.right: parent.right
+
+      bgcolor: Theme.darkGray
+      iconSource: Theme.getThemeIcon( "ic_remove_white_24dp" )
+
+      transform: Scale {
+          origin.x: zoomOutButton.width / 1.5
+          origin.y: zoomOutButton.height / 1.75
+          xScale: 0.75
+          yScale: 0.75
+      }
+
+      onClicked: {
+          mapCanvasMap.zoomOut(Qt.point(mapCanvas.x + mapCanvas.width / 2,mapCanvas.y + mapCanvas.height / 2));
+      }
+    }
+  }
+
+  Column {
     id: locationToolbar
     anchors.right: mapCanvas.right
     anchors.rightMargin: 4
@@ -792,15 +908,57 @@ ApplicationWindow {
 
     QfToolButton {
       id: gpsLinkButton
-      visible: gpsButton.state == "On" && ( stateMachine.state === "digitize" || stateMachine.state === 'measure' )
+      state: linkActive ? "On" : "Off"
+      visible: gpsButton.state === "On" && ( stateMachine.state === "digitize" || stateMachine.state === 'measure' )
       round: true
       checkable: true
       anchors.right: parent.right
 
-      bgcolor: Theme.darkGray
-      iconSource: linkActive ? Theme.getThemeIcon( "ic_gps_link_activated_white_24dp" ) : Theme.getThemeIcon( "ic_gps_link_white_24dp" )
+      readonly property bool linkActive: gpsButton.state === "On" && checked
 
-      readonly property bool linkActive: gpsButton.state == "On" && checked
+      states: [
+        State {
+          name: "Off"
+          PropertyChanges {
+            target: gpsLinkButton
+            iconSource: Theme.getThemeIcon( "ic_gps_link_white_24dp" )
+            bgcolor: Theme.darkGraySemiOpaque
+          }
+        },
+
+        State {
+          name: "On"
+          PropertyChanges {
+            target: gpsLinkButton
+            iconSource: Theme.getThemeIcon( "ic_gps_link_activated_white_24dp" )
+            bgcolor: Theme.darkGray
+          }
+        }
+      ]
+
+      onCheckedChanged: {
+        if (gpsButton.state === "On") {
+            if (checked) {
+                if (freehandButton.freehandDigitizing) {
+                    // deactivate freehand digitizing when cursor locked is on
+                    freehandButton.clicked();
+                }
+                displayToast( qsTr( "Coordinate cursor now locked to position" ) )
+                if (positionSource.positionInfo.latitudeValid) {
+                  var screenLocation = mapCanvas.mapSettings.coordinateToScreen(locationMarker.location);
+                  if ( screenLocation.x < 0 || screenLocation.x > mainWindow.width ||
+                       screenLocation.y < 0 || screenLocation.y > mainWindow.height )
+                  {
+                    mapCanvas.mapSettings.setCenter(positionSource.projectedPosition);
+                  }
+                }
+            }
+            else
+            {
+                displayToast( qsTr( "Coordinate cursor unlocked" ) )
+            }
+        }
+      }
     }
 
     QfToolButton {
@@ -808,13 +966,12 @@ ApplicationWindow {
       state: positionSource.active ? "On" : "Off"
       visible: positionSource.valid
       round: true
-      anchors.right: parent.right
 
-      bgcolor: "#64B5F6"
+      anchors.right: parent.right
 
       onIconSourceChanged: {
         if( state === "On" ){
-          if( positionSource.position.latitudeValid ) {
+          if( positionSource.positionInfo && positionSource.positionInfo.latitudeValid ) {
             displayToast( qsTr( "Received position" ) )
           } else {
             displayToast( qsTr( "Searching for position" ) )
@@ -826,7 +983,6 @@ ApplicationWindow {
 
       states: [
         State {
-
           name: "Off"
           PropertyChanges {
             target: gpsButton
@@ -839,9 +995,8 @@ ApplicationWindow {
           name: "On"
           PropertyChanges {
             target: gpsButton
-            iconSource: positionSource.position.latitudeValid ? Theme.getThemeIcon( "ic_my_location_" + ( followActive ? "white" : "blue" ) + "_24dp" ) : Theme.getThemeIcon( "ic_gps_not_fixed_white_24dp" )
+            iconSource: positionSource.positionInfo && positionSource.positionInfo.latitudeValid ? Theme.getThemeIcon( "ic_my_location_" + ( followActive ? "white" : "blue" ) + "_24dp" ) : Theme.getThemeIcon( "ic_gps_not_fixed_white_24dp" )
             bgcolor: followActive ? "#64B5F6" : Theme.darkGray
-            opacity:1
           }
         }
       ]
@@ -877,7 +1032,7 @@ ApplicationWindow {
       }
 
       onPressAndHold: {
-        gpsMenu.popup()
+        gpsMenu.popup(locationToolbar.x + locationToolbar.width - gpsMenu.width, locationToolbar.y + locationToolbar.height - gpsMenu.height)
       }
 
       function toggleGps() {
@@ -914,7 +1069,7 @@ ApplicationWindow {
       FeatureModel {
         id: digitizingFeature
         currentLayer: dashBoard.currentLayer
-        positionSourceName: positionSource.name
+        positionInformation: positionSource.positionInfo
         topSnappingResult: coordinateLocator.topSnappingResult
         geometry: Geometry {
           id: digitizingGeometry
@@ -1013,13 +1168,61 @@ ApplicationWindow {
     id: mainMenu
     title: qsTr( "Main Menu" )
 
-    width: Math.max(200, mainWindow.width/4)
+    width: {
+        var result = 0;
+        var padding = 0;
+        for (var i = 0; i < count; ++i) {
+            var item = itemAt(i);
+            result = Math.max(item.contentItem.implicitWidth, result);
+            padding = Math.max(item.padding, padding);
+        }
+        return result + padding * 2;
+    }
+
+    MenuItem {
+      text: qsTr( 'Measure Tool' )
+
+      font: Theme.defaultFont
+      height: 48
+      leftPadding: 10
+
+      onTriggered: {
+        dashBoard.close()
+        changeMode( 'measure' )
+        highlighted = false
+      }
+    }
+
+    MenuItem {
+      id: printItem
+      text: qsTr( "Print to PDF" )
+
+      font: Theme.defaultFont
+      height: 48
+      leftPadding: 10
+
+      onTriggered: {
+        if (layoutListInstantiator.model.rowCount() > 1)
+        {
+          printMenu.popup( mainMenu.x, mainMenu.y + printItem.y )
+        }
+        else
+        {
+          mainMenu.close();
+          displayToast( qsTr( 'Printing to PDF') )
+          printMenu.printIndex = 0
+          printMenu.printTimer.restart();
+        }
+        highlighted = false
+      }
+    }
+
+    MenuSeparator { width: parent.width }
 
     MenuItem {
       id: openProjectMenuItem
 
       font: Theme.defaultFont
-      width: parent.width
       height: 48
       leftPadding: 10
 
@@ -1038,7 +1241,6 @@ ApplicationWindow {
       text: qsTr( "Settings" )
 
       font: Theme.defaultFont
-      width: parent.width
       height: 48
       leftPadding: 10
 
@@ -1050,25 +1252,9 @@ ApplicationWindow {
     }
 
     MenuItem {
-      text: qsTr( "About" )
+      text: qsTr( "View Log Messages" )
 
       font: Theme.defaultFont
-      width: parent.width
-      height: 48
-      leftPadding: 10
-
-      onTriggered: {
-        dashBoard.close()
-        aboutDialog.visible = true
-        highlighted = false
-      }
-    }
-
-    MenuItem {
-      text: qsTr( "Log" )
-
-      font: Theme.defaultFont
-      width: parent.width
       height: 48
       leftPadding: 10
 
@@ -1079,34 +1265,16 @@ ApplicationWindow {
       }
     }
 
-    MenuSeparator { width: parent.width }
-
     MenuItem {
-      text: qsTr( 'Measure Tool' )
+      text: qsTr( "About QField" )
 
       font: Theme.defaultFont
-      width: parent.width
       height: 48
       leftPadding: 10
 
       onTriggered: {
         dashBoard.close()
-        changeMode( 'measure' )
-        highlighted = false
-      }
-    }
-
-    MenuItem {
-      id: printItem
-      text: qsTr( "Print to PDF" )
-
-      font: Theme.defaultFont
-      width: parent.width
-      height: 48
-      leftPadding: 10
-
-      onTriggered: {
-        printMenu.popup( mainMenu.x, 2)
+        aboutDialog.visible = true
         highlighted = false
       }
     }
@@ -1140,12 +1308,33 @@ ApplicationWindow {
   Menu {
     id: printMenu
 
+    property alias printTimer: timer
+    property alias printIndex: timer.printIndex
+
     title: qsTr( "Print to PDF" )
 
     signal enablePrintItem( int rows )
 
-    width: Math.max(200, mainWindow.width/3)
-    font: Theme.defaultFont
+    width: {
+        var result = 0;
+        var padding = 0;
+        for (var i = 0; i < count; ++i) {
+            var item = itemAt(i);
+            result = Math.max(item.contentItem.implicitWidth, result);
+            padding = Math.max(item.padding, padding);
+        }
+        return Math.min( result + padding * 2,mainWindow.width - 20);
+    }
+
+    MenuItem {
+      text: qsTr( 'Select template below' )
+
+      font: Theme.defaultFont
+      height: 48
+      leftPadding: 10
+
+      enabled: false
+    }
 
     Instantiator {
 
@@ -1161,11 +1350,13 @@ ApplicationWindow {
         leftPadding: 10
 
         onTriggered: {
-          iface.print( Index )
-          highlighted = false
+            highlighted = false
+            displayToast( qsTr( 'Printing to PDF') )
+            printMenu.printIndex = Index
+            printMenu.printTimer.restart();
         }
       }
-      onObjectAdded: printMenu.insertItem(index, object)
+      onObjectAdded: printMenu.insertItem(index+1, object)
       onObjectRemoved: printMenu.removeItem(object)
     }
 
@@ -1180,7 +1371,20 @@ ApplicationWindow {
         welcomeScreen.focus = false
         recentProjectListModel.reloadModel()
         settings.setValue( "/QField/FirstRunFlag", false )
+        if (stateMachine.state === "digitize") {
+            dashBoard.ensureEditableLayerSelected();
+        }
       }
+    }
+
+    Timer {
+      id: timer
+
+      property int printIndex: 0
+
+      interval: 500
+      repeat: false
+      onTriggered: iface.print( printIndex )
     }
   }
 
@@ -1188,16 +1392,21 @@ ApplicationWindow {
       id: positioningSettings
 
       onPositioningActivatedChanged: {
-          if( positioningActivated ){
-            if( platformUtilities.checkPositioningPermissions() ) {
-              positionSource.preferredPositioningMethods = PositionSource.AllPositioningMethods
+          if ( positioningActivated )
+          {
+            if ( platformUtilities.checkPositioningPermissions() )
+            {
               displayToast( qsTr( "Activating positioning service" ) )
               positionSource.active = true
-            }else{
+            }
+            else
+            {
               displayToast( qsTr( "QField has no permissions to use positioning." ) )
               positioningSettings.positioningActivated = false
             }
-          }else{
+          }
+          else
+          {
               positionSource.active = false
           }
       }
@@ -1207,22 +1416,40 @@ ApplicationWindow {
     id: gpsMenu
     title: qsTr( "Positioning Options" )
     font: Theme.defaultFont
-    width: Math.max(200, mainWindow.width/1.5)
+
+    width: {
+        var result = 0;
+        var padding = 0;
+        for (var i = 0; i < count; ++i) {
+            var item = itemAt(i);
+            result = Math.max(item.contentItem.implicitWidth, result);
+            padding = Math.max(item.padding, padding);
+        }
+        return Math.min( result + padding * 2,mainWindow.width - 20);
+    }
+
+    MenuItem {
+        id: positioningDeviceName
+        text: settings.value("positioningDeviceName", qsTr( "Internal device" ))
+        height: 48
+        font: Theme.defaultFont
+        enabled:false
+    }
+
+    MenuSeparator { width: parent.width }
 
     MenuItem {
       id: positioningItem
       text: qsTr( "Enable Positioning" )
-
       height: 48
       font: Theme.defaultFont
-      width: parent.width
+
       checkable: true
       checked: positioningSettings.positioningActivated
       indicator.height: 20
       indicator.width: 20
       indicator.implicitHeight: 24
       indicator.implicitWidth: 24
-
       onCheckedChanged: {
         if ( checked ) {
             positioningSettings.positioningActivated = true
@@ -1232,30 +1459,13 @@ ApplicationWindow {
       }
     }
 
-    MenuSeparator { width: parent.width }
-
-    MenuItem {
-      text: qsTr( "Center to Current Location" )
-
-      height: 48
-      font: Theme.defaultFont
-      width: parent.width
-      onTriggered: {
-        mapCanvas.mapSettings.setCenter(positionSource.projectedPosition)
-      }
-    }
-
-    MenuSeparator { width: parent.width }
-
     MenuItem {
       text: qsTr( "Show Position Information" )
-
       height: 48
       font: Theme.defaultFont
-      width: parent.width
+
       checkable: true
       checked: settings.valueBool( "/QField/Positioning/ShowInformationView", false )
-
       indicator.height: 20
       indicator.width: 20
       indicator.implicitHeight: 24
@@ -1268,13 +1478,25 @@ ApplicationWindow {
     }
 
     MenuItem {
-      text: qsTr( "Configure Antenna Height" ) // Todo: rename to "Positioning Configuration" when there is more to configure
+      text: qsTr( "Positioning Settings" )
       height: 48
       font: Theme.defaultFont
-      width: parent.width
 
       onTriggered: {
-        positioningSettingsPopup.visible = true
+        qfieldSettings.currentPanel = 1
+        qfieldSettings.visible = true
+      }
+    }
+
+    MenuSeparator { width: parent.width }
+
+    MenuItem {
+      text: qsTr( "Center to Current Location" )
+      height: 48
+      font: Theme.defaultFont
+
+      onTriggered: {
+        mapCanvas.mapSettings.setCenter(positionSource.projectedPosition)
       }
     }
   }
@@ -1561,16 +1783,6 @@ ApplicationWindow {
     Component.onCompleted: focusstack.addFocusTaker( this )
   }
 
-  PositioningSettingsPopup {
-    id: positioningSettingsPopup
-    visible: false
-
-    x: 24
-    y: 24
-    width: parent.width - 48
-    height: parent.height - 48
-  }
-
   QFieldSettings {
     id: qfieldSettings
 
@@ -1830,7 +2042,7 @@ ApplicationWindow {
   FeatureModel {
     id: geometryEditingFeature
     currentLayer: null
-    positionSourceName: positionSource.name
+    positionInformation: positionSource.positionInfo
     vertexModel: vertexModel
   }
 
@@ -1841,4 +2053,3 @@ ApplicationWindow {
       isHovering: hoverHandler.hovered
   }
 }
-

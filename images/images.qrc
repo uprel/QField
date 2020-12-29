@@ -51,6 +51,16 @@
         <file>themes/qfield/xhdpi/ic_add_white_24dp.png</file>
         <file>themes/qfield/xxhdpi/ic_add_white_24dp.png</file>
         <file>themes/qfield/xxxhdpi/ic_add_white_24dp.png</file>
+        <file>themes/qfield/hdpi/ic_add_vertex_white_24dp.png</file>
+        <file>themes/qfield/mdpi/ic_add_vertex_white_24dp.png</file>
+        <file>themes/qfield/xhdpi/ic_add_vertex_white_24dp.png</file>
+        <file>themes/qfield/xxhdpi/ic_add_vertex_white_24dp.png</file>
+        <file>themes/qfield/xxxhdpi/ic_add_vertex_white_24dp.png</file>
+        <file>themes/qfield/hdpi/ic_remove_vertex_white_24dp.png</file>
+        <file>themes/qfield/mdpi/ic_remove_vertex_white_24dp.png</file>
+        <file>themes/qfield/xhdpi/ic_remove_vertex_white_24dp.png</file>
+        <file>themes/qfield/xxhdpi/ic_remove_vertex_white_24dp.png</file>
+        <file>themes/qfield/xxxhdpi/ic_remove_vertex_white_24dp.png</file>
         <file>themes/qfield/hdpi/ic_menu_white_24dp.png</file>
         <file>themes/qfield/hdpi/ic_my_location_blue_24dp.png</file>
         <file>themes/qfield/hdpi/ic_my_location_white_24dp.png</file>
@@ -396,11 +406,6 @@
         <file>themes/qfield/xhdpi/picture_in_picture.png</file>
         <file>themes/qfield/xxhdpi/picture_in_picture.png</file>
         <file>themes/qfield/xxxhdpi/picture_in_picture.png</file>
-        <file>themes/qfield/hdpi/ic_directions_walk_black_24dp.png</file>
-        <file>themes/qfield/mdpi/ic_directions_walk_black_24dp.png</file>
-        <file>themes/qfield/xhdpi/ic_directions_walk_black_24dp.png</file>
-        <file>themes/qfield/xxhdpi/ic_directions_walk_black_24dp.png</file>
-        <file>themes/qfield/xxxhdpi/ic_directions_walk_black_24dp.png</file>
         <file>themes/qfield/hdpi/more_horiz.png</file>
         <file>themes/qfield/mdpi/more_horiz.png</file>
         <file>themes/qfield/xhdpi/more_horiz.png</file>
@@ -412,6 +417,7 @@
         <file>themes/qfield/xxhdpi/ic_lock_black_24dp.png</file>
         <file>themes/qfield/xxxhdpi/ic_lock_black_24dp.png</file>
         <file>themes/qfield/nodpi/ic_legend_collapsed_state_14dp.svg</file>
+        <file>themes/qfield/nodpi/ic_legend_collapsed_state_white_14dp.svg</file>
         <file>themes/qfield/nodpi/ic_group_18dp.svg</file>
         <file>themes/qfield/nodpi/ic_vectorlayer_point_18dp.svg</file>
         <file>themes/qfield/nodpi/ic_vectorlayer_line_18dp.svg</file>
@@ -422,5 +428,11 @@
         <file>themes/qfield/nodpi/ic_vectortilelayer_18dp.svg</file>
         <file>themes/qfield/nodpi/ic_annotationlayer_18dp.svg</file>
         <file>themes/qfield/nodpi/ic_error_outline_24dp.svg</file>
+        <file>themes/qfield/nodpi/refresh_24dp.svg</file>
+        <file>themes/qfield/nodpi/directions_walk_24dp.svg</file>
+        <file>themes/qfield/nodpi/list_24dp.svg</file>
+        <file>themes/qfield/nodpi/zoom_out_map_24dp.svg</file>
+        <file>themes/qfield/nodpi/ic_show_green_48dp.svg</file>
+        <file>themes/qfield/nodpi/ic_hide_green_48dp.svg</file>
     </qresource>
 </RCC>

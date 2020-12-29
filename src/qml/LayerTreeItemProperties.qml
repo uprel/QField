@@ -15,6 +15,8 @@ Popup {
 
   property bool zoomToLayerButtonVisible: false
   property bool showFeaturesListButtonVisible: false
+  property bool showAllFeaturesButtonVisible: false
+  property bool reloadDataButtonVisible: false
 
   property bool trackingButtonVisible: false
   property var trackingButtonText
@@ -44,6 +46,7 @@ Popup {
     expandCheckBox.text = layerTree.data( index, FlatLayerTreeModel.Type ) === 'group' ? qsTr('Expand group') : qsTr('Expand legend item')
     expandCheckBox.checked = !layerTree.data(index, FlatLayerTreeModel.IsCollapsed)
 
+    reloadDataButtonVisible = layerTree.data(index, FlatLayerTreeModel.CanReloadData)
     zoomToLayerButtonVisible = isSpatialLayer()
     showFeaturesListButtonVisible = isShowFeaturesListButtonVisible();
 
@@ -75,25 +78,6 @@ Popup {
       }
 
       Text {
-        id: lockText
-        property var padlockIcon: Theme.getThemeIcon('ic_lock_black_24dp')
-        property var padlockSize: fontMetrics.height - 5
-
-        visible: !!index && (
-                   layerTree.data(index, FlatLayerTreeModel.ReadOnly)
-                   || layerTree.data(index, FlatLayerTreeModel.GeometryLocked))
-        Layout.fillWidth: true
-
-        wrapMode: Text.WordWrap
-        textFormat: Text.RichText
-        text: '<img src="' + padlockIcon + '" width="' + padlockSize + '" height="' + padlockSize + '"> '
-              + (index !== undefined && layerTree.data(index, FlatLayerTreeModel.ReadOnly)
-                  ? qsTr('This layer is configured as "Read-Only" which disables adding, deleting and editing features.')
-                  : qsTr('This layer is configured as "Lock Geometries" which disables adding and deleting features, as well as modifying the geometries of existing features.'))
-        font: Theme.tipFont
-      }
-
-      Text {
         id: invalidText
         property var invalidIcon: Theme.getThemeVectorIcon('ic_error_outline_24dp')
         property var invalidSize: fontMetrics.height - 5
@@ -113,7 +97,7 @@ Popup {
         Layout.fillWidth: true
         topPadding: 5
         bottomPadding: 5
-        text: qsTr('Show on map canvas')
+        text: qsTr('Show on map')
         font: Theme.defaultFont
         // everything but nonspatial vector layer
         visible: !!(index && (!isSpatialLayer() && layerTree.data( index, FlatLayerTreeModel.LayerType ) !== 'vectorlayer' || isSpatialLayer()))
@@ -148,6 +132,7 @@ Popup {
         font: Theme.defaultFont
         text: qsTr('Zoom to layer')
         visible: zoomToLayerButtonVisible
+        icon.source: Theme.getThemeVectorIcon( 'zoom_out_map_24dp' )
 
         onClicked: {
           mapCanvas.mapSettings.setCenterToLayer( layerTree.data( index, FlatLayerTreeModel.MapLayerPointer ) )
@@ -157,11 +142,29 @@ Popup {
       }
 
       QfButton {
+        id: reloadDataButton
+        Layout.fillWidth: true
+        Layout.topMargin: 5
+        font: Theme.defaultFont
+        text: qsTr('Reload data')
+        visible: reloadDataButtonVisible
+        icon.source: Theme.getThemeVectorIcon( 'refresh_24dp' )
+
+        onClicked: {
+          layerTree.data(index, FlatLayerTreeModel.MapLayerPointer).reload()
+          close()
+          dashBoard.visible = false
+          displayToast(qsTr('Reload of layer %1 triggered').arg(layerTree.data(index, Qt.DisplayName)))
+        }
+      }
+
+      QfButton {
         id: showFeaturesList
         Layout.fillWidth: true
         Layout.topMargin: 5
         text: qsTr('Show features list')
         visible: showFeaturesListButtonVisible
+        icon.source: Theme.getThemeVectorIcon( 'list_24dp' )
 
         onClicked: {
           var vl = layerTree.data( index, FlatLayerTreeModel.VectorLayerPointer )
@@ -185,6 +188,7 @@ Popup {
         font: Theme.defaultFont
         text: trackingButtonText
         visible: trackingButtonVisible
+        icon.source: Theme.getThemeVectorIcon( 'directions_walk_24dp' )
 
         onClicked: {
             //start track
@@ -195,6 +199,34 @@ Popup {
                 trackingModel.createTracker(layerTree.data(index, FlatLayerTreeModel.VectorLayerPointer), itemVisibleCheckBox.checked );
             }
             close()
+        }
+      }
+
+      Text {
+        id: lockText
+        property var padlockIcon: Theme.getThemeIcon('ic_lock_black_24dp')
+        property var padlockSize: fontMetrics.height - 5
+
+        property bool isReadOnly: index !== undefined && layerTree.data(index, FlatLayerTreeModel.ReadOnly)
+        property bool isGeometryLocked: index !== undefined && layerTree.data(index, FlatLayerTreeModel.GeometryLocked)
+
+        visible: isReadOnly || isGeometryLocked
+        Layout.fillWidth: true
+
+        wrapMode: Text.WordWrap
+        textFormat: Text.RichText
+        text: '<img src="' + padlockIcon + '" width="' + padlockSize + '" height="' + padlockSize + '"> '
+              + (isReadOnly ? qsTr('Read-Only Layer') : qsTr('Geometry Locked Layer'))
+        font: Theme.tipFont
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                if ( lockText.isReadOnly )
+                    displayToast(qsTr('This layer is configured as "Read-Only" which disables adding, deleting and editing features.'))
+                else
+                    displayToast(qsTr('This layer is configured as "Lock Geometries" which disables adding and deleting features, as well as modifying the geometries of existing features.'))
+            }
         }
       }
     }

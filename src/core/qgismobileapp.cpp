@@ -111,6 +111,9 @@
 #include "expressionevaluator.h"
 #include "stringutils.h"
 #include "urlutils.h"
+#include "bluetoothreceiver.h"
+#include "bluetoothdevicemodel.h"
+#include "gnsspositioninformation.h"
 #include "changelogcontents.h"
 #include "qfieldcloudconnection.h"
 #include "qfieldcloudprojectsmodel.h"
@@ -176,6 +179,14 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
   mFlatLayerTree = new FlatLayerTreeModel( mProject->layerTreeRoot(), mProject, this );
   mLegendImageProvider = new LegendImageProvider( mFlatLayerTree->layerTreeModel() );
   mTrackingModel = new TrackingModel;
+
+  // Transition from 1.8 to 1.8.1+
+  QSettings settings;
+  const QString deviceAddress = settings.value( QStringLiteral( "positioningDevice" ), QString() ).toString();
+  if ( deviceAddress == QStringLiteral( "internal" ) )
+  {
+    settings.setValue( QStringLiteral( "positioningDevice" ), QString() );
+  }
 
   // cppcheck-suppress leakReturnValNotUsed
   initDeclarative();
@@ -356,9 +367,14 @@ void QgisMobileapp::initDeclarative()
   qmlRegisterType<FeatureCheckListModel>( "org.qgis", 1, 0, "FeatureCheckListModel" );
   qmlRegisterType<GeometryEditorsModel>( "org.qfield", 1, 0, "GeometryEditorsModel" );
   qmlRegisterType<ExpressionEvaluator>( "org.qfield", 1, 0, "ExpressionEvaluator" );
+  qmlRegisterType<BluetoothDeviceModel>( "org.qfield", 1, 0, "BluetoothDeviceModel" );
+  qmlRegisterType<BluetoothReceiver>( "org.qfield", 1, 0, "BluetoothReceiver" );
   qmlRegisterType<ChangelogContents>( "org.qfield", 1, 0, "ChangelogContents" );
   qmlRegisterType<QFieldCloudConnection>( "org.qfield", 1, 0, "QFieldCloudConnection" );
   qmlRegisterType<QFieldCloudProjectsModel>( "org.qfield", 1, 0, "QFieldCloudProjectsModel" );
+
+  qRegisterMetaType<GnssPositionInformation>( "GnssPositionInformation" );
+
   REGISTER_SINGLETON( "org.qfield", GeometryEditorsModel, "GeometryEditorsModelSingleton" );
   REGISTER_SINGLETON( "org.qfield", GeometryUtils, "GeometryUtils" );
   REGISTER_SINGLETON( "org.qfield", FeatureUtils, "FeatureUtils" );

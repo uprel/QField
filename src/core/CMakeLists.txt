@@ -37,6 +37,7 @@ SET(QFIELD_CORE_SRCS
   qgsgeometrywrapper.cpp
   qgsgpkgflusher.cpp
   qgssggeometry.cpp
+  gnsspositioninformation.cpp
   referencingfeaturelistmodel.cpp
   recentprojectlistmodel.cpp
   rubberband.cpp
@@ -51,6 +52,8 @@ SET(QFIELD_CORE_SRCS
   trackingmodel.cpp
   tracker.cpp
   viewstatus.cpp
+  bluetoothreceiver.cpp
+  bluetoothdevicemodel.cpp
   changelogcontents.cpp
   utils/fileutils.cpp
   utils/geometryutils.cpp
@@ -114,6 +117,7 @@ SET(QFIELD_CORE_HDRS
   qgsgeometrywrapper.h
   qgsgpkgflusher.h
   qgssggeometry.h
+  gnsspositioninformation.h
   referencingfeaturelistmodel.h
   recentprojectlistmodel.h
   rubberband.h
@@ -126,6 +130,8 @@ SET(QFIELD_CORE_HDRS
   valuemapmodel.h
   vertexmodel.h
   trackingmodel.h
+  bluetoothreceiver.h
+  bluetoothdevicemodel.h
   tracker.h
   viewstatus.h
   changelogcontents.h
@@ -210,6 +216,7 @@ TARGET_LINK_LIBRARIES(qfield_core PUBLIC
   Qt5::Sql
   Qt5::Concurrent
   Qt5::WebView
+  Qt5::Bluetooth
   ${QGIS_CORE_LIBRARY}
   ${QGIS_ANALYSIS_LIBRARY}
   ${PROJ_LIBRARY}

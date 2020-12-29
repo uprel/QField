@@ -39,19 +39,13 @@ PlatformUtilities::~PlatformUtilities()
 {
 }
 
-QString PlatformUtilities::configDir() const
+void PlatformUtilities::initSystem()
 {
-  return QString();
 }
 
-QString PlatformUtilities::shareDir() const
+QString PlatformUtilities::systemGenericDataLocation() const
 {
-  return QString();
-}
-
-QString PlatformUtilities::packagePath() const
-{
-  return QString();
+  return QStandardPaths::standardLocations( QStandardPaths::GenericDataLocation ).first();
 }
 
 QString PlatformUtilities::qgsProject() const
@@ -124,7 +118,7 @@ PictureSource *PlatformUtilities::getGalleryPicture( const QString &prefix, cons
 
 ViewStatus *PlatformUtilities::open( const QString &uri )
 {
-  QDesktopServices::openUrl( QUrl( uri ) );
+  QDesktopServices::openUrl( QStringLiteral( "file://%1" ).arg( uri ) );
   return nullptr;
 }
 

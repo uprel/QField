@@ -23,6 +23,8 @@
 #include <qgsmessagelog.h>
 #include <qgsvectorlayer.h>
 #include <qgsgeometryoptions.h>
+#include <qgsgeometrycollection.h>
+#include <qgscurvepolygon.h>
 #include <qgsrelationmanager.h>
 #include <qgsvectorlayerutils.h>
 
@@ -83,7 +85,7 @@ void FeatureModel::setFeatures( const QList<QgsFeature> &features )
         const int attributeIndex;
         const QgsFeature &feature;
         AttributeNotEqual( const QgsFeature &feature, int attributeIndex ) : attributeIndex( attributeIndex ), feature( feature ) {}
-        bool operator()( const QgsFeature &f) const { return f.attributes().size() > attributeIndex && feature.attributes().at( attributeIndex ) != f.attributes().at( attributeIndex ); }
+        bool operator()( const QgsFeature &f ) const { return f.attributes().size() > attributeIndex && feature.attributes().at( attributeIndex ) != f.attributes().at( attributeIndex ); }
       };
 
       if ( std::any_of( mFeatures.begin(), mFeatures.end(), AttributeNotEqual( mFeature, i ) ) )
@@ -408,8 +410,8 @@ void FeatureModel::resetAttributes()
     return;
 
   QgsExpressionContext expressionContext = mLayer->createExpressionContext();
-  if ( mPositionSource )
-    expressionContext << ExpressionContextUtils::positionScope( mPositionSource.get() );
+  if ( mPositionInformation.isValid() )
+    expressionContext << ExpressionContextUtils::positionScope( mPositionInformation );
 
   //set snapping_results to ExpressionScope...
   if ( mTopSnappingResult.isValid() )
@@ -452,37 +454,55 @@ void FeatureModel::resetAttributes()
 
 void FeatureModel::applyGeometry()
 {
+  QString error;
   QgsGeometry geometry = mGeometry->asQgsGeometry();
 
-  QList<QgsVectorLayer *> intersectionLayers;
-
-  switch ( QgsProject::instance()->avoidIntersectionsMode() )
+  if ( QgsWkbTypes::geometryType( geometry.wkbType() ) == QgsWkbTypes::PolygonGeometry )
   {
-    case QgsProject::AvoidIntersectionsMode::AvoidIntersectionsCurrentLayer:
-      intersectionLayers.append( mLayer );
-      break;
-    case QgsProject::AvoidIntersectionsMode::AvoidIntersectionsLayers:
-      intersectionLayers = QgsProject::instance()->avoidIntersectionsLayers();
-      break;
-    case QgsProject::AvoidIntersectionsMode::AllowIntersections:
-      break;
-  }
-  if ( !intersectionLayers.isEmpty() && geometry.type() == QgsWkbTypes::PolygonGeometry )
-  {
-    geometry.avoidIntersections( intersectionLayers );
+    // Remove any invalid intersection in polygon geometry
+    QgsGeometry sanitizedGeometry;
+    if ( QgsGeometryCollection *collection = qgsgeometry_cast<QgsGeometryCollection *>( geometry.get() ) )
+    {
+      QgsGeometryPartIterator parts = collection->parts();
+      while ( parts.hasNext() )
+      {
+        QgsGeometry part( parts.next() );
+        sanitizedGeometry.addPart( part.buffer( 0.0, 5 ).constGet()->clone(), QgsWkbTypes::PolygonGeometry );
+      }
+    }
+    else if ( QgsCurvePolygon *polygon = qgsgeometry_cast<QgsCurvePolygon *>( geometry.get() ) )
+    {
+      sanitizedGeometry = geometry.buffer( 0, 5 );
+    }
+    if ( sanitizedGeometry.constGet()->isValid( error ) )
+      geometry = sanitizedGeometry;
+
+    QList<QgsVectorLayer *> intersectionLayers;
+    switch ( QgsProject::instance()->avoidIntersectionsMode() )
+    {
+      case QgsProject::AvoidIntersectionsMode::AvoidIntersectionsCurrentLayer:
+        intersectionLayers.append( mLayer );
+        break;
+      case QgsProject::AvoidIntersectionsMode::AvoidIntersectionsLayers:
+        intersectionLayers = QgsProject::instance()->avoidIntersectionsLayers();
+        break;
+      case QgsProject::AvoidIntersectionsMode::AllowIntersections:
+        break;
+    }
+    if ( !intersectionLayers.isEmpty() )
+      geometry.avoidIntersections( intersectionLayers );
   }
 
-  if ( mLayer && mLayer->geometryOptions()->geometryPrecision() != 0.0 )
+  if ( mLayer && mLayer->geometryOptions()->geometryPrecision() == 0.0 )
   {
-    const double precision = mLayer->geometryOptions()->geometryPrecision();
-    QgsGeometry snappedGeometry = geometry.snappedToGrid( precision, precision );
-    geometry = snappedGeometry;
+    // Still do a bit of node cleanup
+    QgsGeometry deduplicatedGeometry = geometry;
+    deduplicatedGeometry.removeDuplicateNodes( 0.00000001 );
+    if ( deduplicatedGeometry.constGet()->isValid( error ) )
+      geometry = deduplicatedGeometry;
   }
 
-  // Clean up the geometry
   geometry = geometry.makeValid();
-  geometry.removeDuplicateNodes( 7 );
-
   mFeature.setGeometry( geometry );
 }
 
@@ -675,18 +695,15 @@ bool FeatureModel::startEditing()
   }
 }
 
-QString FeatureModel::positionSourceName() const
+GnssPositionInformation FeatureModel::positionInformation() const
 {
-  return mPositionSource ? mPositionSource->sourceName() : QString();
+  return mPositionInformation;
 }
 
-void FeatureModel::setPositionSourceName( const QString &positionSourceName )
+void FeatureModel::setPositionInformation( const GnssPositionInformation &positionInformation )
 {
-  if ( mPositionSource && mPositionSource->sourceName() == positionSourceName )
-    return;
-
-  mPositionSource.reset( QGeoPositionInfoSource::createSource( positionSourceName, this ) );
-  emit positionSourceChanged();
+  mPositionInformation = positionInformation;
+  emit positionInformationChanged();
 }
 
 SnappingResult FeatureModel::topSnappingResult() const

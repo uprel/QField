@@ -24,12 +24,13 @@ if [[ -n ${CI_TAG} ]]; then
   export APP_VERSION_STR
   export APK_VERSION_CODE
 elif [[ ${CI_PULL_REQUEST} = false ]]; then
+  echo "Building dev (nightly)"
   ARCH_NUMBER=$(arch_to_build_number ${ARCH})
   # get numbers of masters commits
   NUMBER_OF_COMMITS=$(curl -I -k "https://api.github.com/repos/${CI_REPO_SLUG}/commits?per_page=1&sha=${CURRENT_COMMIT}" | sed -n '/^[Ll]ink:/ s/.*"next".*page=\([0-9]*\).*"last".*/\1/p')
-  echo "Building dev (nightly)"
-  export APP_NAME="${CUSTOM_APP_NAME:-QField Dev}"
   CUSTOM_APP_PACKAGE_NAME=$(echo ${NIGHTLY_PACKAGE_NAME} | awk '{print $NF}' FS=.)
+
+  export APP_NAME="${CUSTOM_APP_NAME:-QField Dev}"
   export APP_PACKAGE_NAME="${CUSTOM_APP_PACKAGE_NAME:-qfield_dev}"
   export APP_ICON="qfield_logo_beta"
   export APP_VERSION=""
@@ -38,10 +39,9 @@ elif [[ ${CI_PULL_REQUEST} = false ]]; then
   # max = 2100000000
   export APP_VERSION_STR="${CI_BRANCH}-dev"
   if [[ -n $CUSTOM_APP_PACKAGE_NAME ]]; then
-    ARCH_BUILD_NUMBER=$(arch_to_build_number ${ARCH})
-    export APP_VERSION_CODE="${GITHUB_RUN_NUMBER}${ARCH_BUILD_NUMBER}"
+    export APK_VERSION_CODE="${GITHUB_RUN_NUMBER}${ARCH_NUMBER}"
   else
-    export APP_VERSION_CODE=0$((1930000+NUMBER_OF_COMMITS))${ARCH_NUMBER}
+    export APK_VERSION_CODE=0$((1930000+NUMBER_OF_COMMITS))${ARCH_NUMBER}
   fi
 
 else

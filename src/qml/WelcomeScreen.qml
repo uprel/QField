@@ -3,11 +3,13 @@ import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.12
 import QtQuick.Particles 2.0
 
+import org.qfield 1.0
 import Theme 1.0
 
 Page {
   property alias model: table.model
   signal showOpenProjectDialog
+  signal showQFieldCloudScreen
 
   Rectangle {
     id: welcomeBackground
@@ -85,18 +87,20 @@ Page {
         spacing: 12
 
         QfButton {
-          id: localProjectButton
+          id: cloudProjectButton
           Layout.fillWidth: true
-          text: qsTr( "Open local project" )
+          text: qsTr( "QFieldCloud Projects" )
           onClicked: {
-            showOpenProjectDialog()
+            showQFieldCloudScreen()
           }
         }
         QfButton {
-          id: cloudProjectButton
+          id: localProjectButton
           Layout.fillWidth: true
-          text: qsTr( "QField Cloud projects, coming soon" )
-          enabled: false
+          text: qsTr( "Open Local Project" )
+          onClicked: {
+            showOpenProjectDialog()
+          }
         }
 
         Text {
@@ -128,6 +132,7 @@ Page {
           delegate: Rectangle {
             id: rectangle
             property string path: ProjectPath
+            property var type: ProjectType
             width: parent ? parent.width : undefined
             height: line.height
             color: "transparent"
@@ -143,7 +148,7 @@ Page {
               Image {
                 id: type
                 anchors.verticalCenter: inner.verticalCenter
-                source: ProjectType == 0 ? Theme.getThemeIcon('ic_map_green_48dp') : ''
+                source: ProjectType == 0 ? Theme.getThemeIcon('ic_map_green_48dp') : Theme.getThemeIcon('ic_cloud_project_48dp')
                 sourceSize.width: 80
                 sourceSize.height: 80
                 width: 40
@@ -190,8 +195,12 @@ Page {
             anchors.fill: parent
             onClicked: {
               var item = table.itemAt(mouse.x, mouse.y)
-              if (item)
+              if (item) {
+                if ( item.type == 1 && cloudConnection.hasToken && cloudConnection.status !== QFieldCloudConnection.LoggedIn ) {
+                  cloudConnection.login()
+                }
                 iface.loadProject(item.path)
+              }
             }
             onPressed: {
               var item = table.itemAt(mouse.x, mouse.y)

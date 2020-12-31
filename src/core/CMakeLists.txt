@@ -60,6 +60,7 @@ SET(QFIELD_CORE_SRCS
   utils/featureutils.cpp
   utils/stringutils.cpp
   utils/urlutils.cpp
+  utils/qfieldcloudutils.cpp
   expressionevaluator.cpp
   qgsquick/qgsquickcoordinatetransformer.cpp
   qgsquick/qgsquickfeaturelayerpair.cpp
@@ -67,6 +68,13 @@ SET(QFIELD_CORE_SRCS
   qgsquick/qgsquickmapsettings.cpp
   qgsquick/qgsquickmaptransform.cpp
   qgsquick/qgsquickutils.cpp
+  qfieldcloudconnection.cpp
+  qfieldcloudprojectsmodel.cpp
+  deltafilewrapper.cpp
+  deltastatuslistmodel.cpp
+  layerobserver.cpp
+  networkreply.cpp
+  networkmanager.cpp
 )
 
 SET(QFIELD_CORE_HDRS
@@ -132,6 +140,7 @@ SET(QFIELD_CORE_HDRS
   utils/featureutils.h
   utils/stringutils.h
   utils/urlutils.h
+  utils/qfieldcloudutils.h
   expressionevaluator.h
   qgsquick/qgsquickcoordinatetransformer.h
   qgsquick/qgsquickfeaturelayerpair.h
@@ -139,6 +148,13 @@ SET(QFIELD_CORE_HDRS
   qgsquick/qgsquickmapsettings.h
   qgsquick/qgsquickmaptransform.h
   qgsquick/qgsquickutils.h
+  qfieldcloudconnection.h
+  qfieldcloudprojectsmodel.h
+  deltafilewrapper.h
+  deltastatuslistmodel.h
+  layerobserver.h
+  networkreply.h
+  networkmanager.h
 )
 
 IF (ANDROID)

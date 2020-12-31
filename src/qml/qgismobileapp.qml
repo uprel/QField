@@ -712,7 +712,7 @@ ApplicationWindow {
         }
         if (currentLayer != null && currentLayer === layerTree.data(index, FlatLayerTreeModel.VectorLayerPointer))
         {
-           if (layerTree.data(index, FlatLayerTreeModel.ReadOnly) === false || layerTree.data(index, FlatLayerTreeModel.GeometryLocked) === false)
+           if (layerTree.data(index, FlatLayerTreeModel.ReadOnly) === true || layerTree.data(index, FlatLayerTreeModel.GeometryLocked) === true)
            {
              currentLayerLocked = true;
            }

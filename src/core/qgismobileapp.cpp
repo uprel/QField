@@ -115,6 +115,12 @@
 #include "bluetoothdevicemodel.h"
 #include "gnsspositioninformation.h"
 #include "changelogcontents.h"
+#include "qfieldcloudconnection.h"
+#include "qfieldcloudprojectsmodel.h"
+#include "qfieldcloudutils.h"
+#include "layerobserver.h"
+#include "deltafilewrapper.h"
+
 
 #define QUOTE(string) _QUOTE(string)
 #define _QUOTE(string) #string
@@ -169,6 +175,7 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
 
   mProject = QgsProject::instance();
   mGpkgFlusher = qgis::make_unique<QgsGpkgFlusher>( mProject );
+  mLayerObserver.reset( new LayerObserver( mProject ) );
   mFlatLayerTree = new FlatLayerTreeModel( mProject->layerTreeRoot(), mProject, this );
   mLegendImageProvider = new LegendImageProvider( mFlatLayerTree->layerTreeModel() );
   mTrackingModel = new TrackingModel;
@@ -233,6 +240,20 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
   mMapCanvas = rootObjects().first()->findChild<QgsQuickMapCanvasMap *>();
   mMapCanvas->mapSettings()->setProject( mProject );
 
+  QFieldCloudProjectsModel *qFieldCloudProjectsModel = rootObjects().first()->findChild<QFieldCloudProjectsModel *>();
+
+  connect( qFieldCloudProjectsModel, &QFieldCloudProjectsModel::projectDownloaded, this, [ = ] ( const QString &projectId, const bool hasError, const QString &projectName )
+  {
+    Q_UNUSED( projectName );
+    if ( ! hasError )
+    {
+      if ( projectId == QFieldCloudUtils::getProjectId( mProject ) )
+      {
+        reloadProjectFile( mProject->fileName() );
+      }
+    }
+  } );
+
   mFlatLayerTree->layerTreeModel()->setLegendMapViewData( mMapCanvas->mapSettings()->mapSettings().mapUnitsPerPixel(),
       static_cast< int >( std::round( mMapCanvas->mapSettings()->outputDpi() ) ), mMapCanvas->mapSettings()->mapSettings().scale() );
 
@@ -288,6 +309,10 @@ void QgisMobileapp::initDeclarative()
   qRegisterMetaType<QgsDefaultValue>( "QgsDefaultValue" );
   qRegisterMetaType<QgsFieldConstraints>( "QgsFieldConstraints" );
   qRegisterMetaType<QgsGeometry::OperationResult>( "QgsGeometry::OperationResult" );
+  qRegisterMetaType<QFieldCloudConnection::ConnectionStatus>( "QFieldCloudConnection::ConnectionStatus" );
+  qRegisterMetaType<QFieldCloudProjectsModel::ProjectStatus>( "QFieldCloudProjectsModel::ProjectStatus" );
+  qRegisterMetaType<QFieldCloudProjectsModel::ProjectCheckout>( "QFieldCloudProjectsModel::ProjectCheckout" );
+  qRegisterMetaType<QFieldCloudProjectsModel::ProjectModification>( "QFieldCloudProjectsModel::ProjectModification" );
 
   qmlRegisterUncreatableType<QgsProject>( "org.qgis", 1, 0, "Project", "" );
   qmlRegisterUncreatableType<QgsCoordinateReferenceSystem>( "org.qgis", 1, 0, "CoordinateReferenceSystem", "" );
@@ -345,6 +370,8 @@ void QgisMobileapp::initDeclarative()
   qmlRegisterType<BluetoothDeviceModel>( "org.qfield", 1, 0, "BluetoothDeviceModel" );
   qmlRegisterType<BluetoothReceiver>( "org.qfield", 1, 0, "BluetoothReceiver" );
   qmlRegisterType<ChangelogContents>( "org.qfield", 1, 0, "ChangelogContents" );
+  qmlRegisterType<QFieldCloudConnection>( "org.qfield", 1, 0, "QFieldCloudConnection" );
+  qmlRegisterType<QFieldCloudProjectsModel>( "org.qfield", 1, 0, "QFieldCloudProjectsModel" );
 
   qRegisterMetaType<GnssPositionInformation>( "GnssPositionInformation" );
 
@@ -354,6 +381,8 @@ void QgisMobileapp::initDeclarative()
   REGISTER_SINGLETON( "org.qfield", FileUtils, "FileUtils" );
   REGISTER_SINGLETON( "org.qfield", StringUtils, "StringUtils" );
   REGISTER_SINGLETON( "org.qfield", UrlUtils, "UrlUtils" );
+  REGISTER_SINGLETON( "org.qfield", QFieldCloudUtils, "QFieldCloudUtils" );
+
 
   qmlRegisterUncreatableType<AppInterface>( "org.qgis", 1, 0, "QgisInterface", "QgisInterface is only provided by the environment and cannot be created ad-hoc" );
   qmlRegisterUncreatableType<Settings>( "org.qgis", 1, 0, "Settings", "" );
@@ -361,6 +390,8 @@ void QgisMobileapp::initDeclarative()
   qmlRegisterUncreatableType<FlatLayerTreeModel>( "org.qfield", 1, 0, "FlatLayerTreeModel", "The FlatLayerTreeModel is available as context property `flatLayerTree`." );
   qmlRegisterUncreatableType<TrackingModel>( "org.qfield", 1, 0, "TrackingModel", "The TrackingModel is available as context property `trackingModel`." );
   qmlRegisterUncreatableType<QgsGpkgFlusher>( "org.qfield", 1, 0, "QgsGpkgFlusher", "The gpkgFlusher is available as context property `gpkgFlusher`" );
+  qmlRegisterUncreatableType<LayerObserver>( "org.qfield", 1, 0, "LayerObserver", "" );
+  qmlRegisterUncreatableType<DeltaFileWrapper>( "org.qfield", 1, 0, "DeltaFileWrapper", "" );
 
   qRegisterMetaType<SnappingResult>( "SnappingResult" );
 
@@ -384,6 +415,7 @@ void QgisMobileapp::initDeclarative()
   rootContext()->setContextProperty( "ExifTools", QVariant::fromValue<QgsExifTools>( mExifTools ) );
   rootContext()->setContextProperty( "LocatorModelNoGroup", QgsLocatorModel::NoGroup );
   rootContext()->setContextProperty( "gpkgFlusher", mGpkgFlusher.get() );
+  rootContext()->setContextProperty( "layerObserver", mLayerObserver.get() );
 
 // Check QGIS Version
 #if VERSION_INT >= 30600
@@ -468,7 +500,19 @@ void QgisMobileapp::onReadProject( const QDomDocument &doc )
 
   QList<QPair<QString, QString>> projects = recentProjects();
   QFileInfo fi( mProject->fileName() );
-  QPair<QString, QString> project = qMakePair( mProject->title().isEmpty() ? fi.completeBaseName() : mProject->title(), mProject->fileName() );
+  QString title;
+  if ( mProject->fileName().startsWith( QFieldCloudUtils::localCloudDirectory() ) )
+  {
+    // Overwrite the title to match what is used in QField Cloud
+    const QString projectId = fi.dir().dirName();
+    title = QSettings().value( QStringLiteral( "QFieldCloud/projects/%1/name" ).arg( projectId ), fi.fileName() ).toString();
+  }
+  else
+  {
+    title = mProject->title().isEmpty() ? fi.completeBaseName() : mProject->title();
+  }
+
+  QPair<QString, QString> project = qMakePair( title, mProject->fileName() );
   if ( projects.contains( project ) )
     projects.removeAt( projects.indexOf( project ) );
   projects.insert( 0, project );
@@ -567,7 +611,7 @@ void QgisMobileapp::print( int layoutIndex )
   if ( layoutToPrint->pageCollection()->pageCount() == 0 )
     return;
 
-  layoutToPrint->referenceMap()->zoomToExtent( mMapCanvas->mapSettings()->visibleExtent() );
+  layoutToPrint->referenceMap()->setExtent( mMapCanvas->mapSettings()->visibleExtent() );
 
   QPrinter printer;
   QString documentsLocation = QStringLiteral( "%1/QField" ).arg( QStandardPaths::writableLocation( QStandardPaths::DocumentsLocation ) );

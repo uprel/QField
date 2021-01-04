@@ -40,7 +40,7 @@ QFieldCloudConnection::QFieldCloudConnection()
 }
 
 QMap<QString, QString> QFieldCloudConnection::sErrors = QMap<QString, QString>({
-{"unknown_error", QObject::tr( "QFieldcloud Unknown Error" )},
+{"unknown_error", QObject::tr( "QFieldCloud Unknown Error" )},
 {"status_not_ok", QObject::tr( "Status not ok" )},
 {"empty_content", QObject::tr( "Empty content" )},
 {"object_not_found", QObject::tr( "Object not found" )},

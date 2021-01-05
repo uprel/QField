@@ -61,6 +61,9 @@ class QFieldCloudConnection : public QObject
      */
     static QString errorString( QNetworkReply *reply );
 
+    //!Contains a map of error codes and translated messages
+    static QMap<QString, QString> sErrors;
+
     /**
      * Returns the currently set server connection URL.
      */

@@ -1132,7 +1132,10 @@ void QFieldCloudProjectsModel::projectListReceived()
   Q_ASSERT( rawReply );
 
   if ( rawReply->error() != QNetworkReply::NoError )
+  {
+    emit warning( QFieldCloudConnection::errorString( rawReply ) );
     return;
+  }
 
   QByteArray response = rawReply->readAll();
 

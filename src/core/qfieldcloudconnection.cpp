@@ -39,39 +39,78 @@ QFieldCloudConnection::QFieldCloudConnection()
 #endif
 }
 
+QMap<QString, QString> QFieldCloudConnection::sErrors = QMap<QString, QString>({
+{"unknown_error", QObject::tr( "QFieldCloud Unknown Error" )},
+{"status_not_ok", QObject::tr( "Status not ok" )},
+{"empty_content", QObject::tr( "Empty content" )},
+{"object_not_found", QObject::tr( "Object not found" )},
+{"api_error", QObject::tr( "API Error" )},
+{"validation_error", QObject::tr( "Validation Error" )},
+{"multiple_projects", QObject::tr( "Multiple Projects" )},
+{"invalid_deltafile", QObject::tr( "Invalid delta file" )},
+{"no_qgis_project", QObject::tr( "The project does not contain a valid QGIS project file" )},
+{"invalid_job", QObject::tr( "Invalid job" )},
+{"qgis_export_error", QObject::tr( "QGIS export failed" )},
+{"qgis_cannot_open_project", QObject::tr( "QGIS is unable to open the QGIS project" )},
+});
+
 QString QFieldCloudConnection::errorString( QNetworkReply *reply )
 {
   if ( !reply )
     return QString();
 
-  if ( reply->error() == QNetworkReply::NoError )
-    return QString();
-
-  QJsonParseError jsonError;
-  const QJsonObject doc = QJsonDocument::fromJson( reply->readAll(), &jsonError ).object();
-
   QString errorMessage;
-  if ( jsonError.error == QJsonParseError::NoError )
+  QString payload;
+  switch ( reply->error() )
   {
-    if ( doc.contains( QStringLiteral( "detail" ) ) )
-      errorMessage += doc.value( QStringLiteral( "detail" ) ).toString();
-    else
-      errorMessage += QStringLiteral( "<no server details>" );
+    case QNetworkReply::NoError:
+      break;
+    case QNetworkReply::TimeoutError:
+      errorMessage += tr( "[timeout] The request took too long to finish, please retry." );
+      break;
+    case QNetworkReply::OperationCanceledError:
+      errorMessage += tr( "[aborted] The request has been aborted." );
+      break;
+    default:
+      payload = reply->readAll();
+      QJsonParseError jsonError;
+      const QJsonObject doc = QJsonDocument::fromJson( payload.toUtf8(), &jsonError ).object();
 
-    if ( errorMessage.isEmpty() )
-      errorMessage += QStringLiteral( "<empty server details>" );
+      if ( jsonError.error == QJsonParseError::NoError )
+      {
+        if ( doc.contains( QStringLiteral( "code" ) ) )
+        {
+          QString code = doc.value( QStringLiteral( "code" ) ).toString();
+          errorMessage += QStringLiteral( "[QF/%1] " ).arg( code );
+
+          if ( sErrors.contains( code ) )
+            errorMessage += sErrors.value( code );
+          else
+            errorMessage += doc.value( QStringLiteral( "message" ) ).toString();
+        }
+        else
+          errorMessage += QStringLiteral( "<no server details>" );
+
+        if ( errorMessage.isEmpty() )
+          errorMessage += QStringLiteral( "<empty server details>" );
+      }
+      break;
   }
-  else
+
+  if ( errorMessage.isEmpty() )
   {
-    errorMessage += tr( "Cannot read JSON from failed request: %1. " ).arg( jsonError.errorString() );
+    int httpCode = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
+    errorMessage += QStringLiteral( "[HTTP/%1] %2 " ).arg( httpCode ).arg( reply->errorString() );
+    errorMessage += ( httpCode > 400 )
+        ? tr( "Server Error." )
+        : tr( "Network Error." );
+    errorMessage += payload.left( 200 );
+
+    if ( payload.size() > 200 )
+      errorMessage += QStringLiteral( "…" );
   }
 
-  int httpCode = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt();
-  errorMessage += QStringLiteral( "[HTTP/%1] %2 " ).arg( httpCode ).arg( reply->errorString() );
-
-  errorMessage += ( httpCode > 400 )
-      ? tr( "Server Error." )
-      : tr( "Network Error." );
+  QgsMessageLog::logMessage( errorMessage );
 
   return errorMessage;
 }
@@ -170,7 +209,6 @@ void QFieldCloudConnection::login()
       {
         QString message( errorString( rawReply ) );
         emit loginFailed( message );
-        QgsMessageLog::logMessage( message );
       }
       setStatus( ConnectionStatus::Disconnected );
       return;

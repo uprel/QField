@@ -154,7 +154,7 @@ Item {
             else
             {
                 doublePressed = false
-                dragHandler.grabPermissions = PointerHandler.CanTakeOverFromHandlersOfDifferentType | PointerHandler.ApprovesTakeOverByItems
+                dragHandler.grabPermissions = PointerHandler.ApprovesTakeOverByHandlersOfSameType | PointerHandler.ApprovesTakeOverByHandlersOfDifferentType | PointerHandler.ApprovesTakeOverByItems
             }
 
             if (longPressActive)
@@ -167,7 +167,7 @@ Item {
         id: dragHandler
         target: null
         enabled: !freehandDigitizing
-        grabPermissions: PointerHandler.CanTakeOverFromHandlersOfDifferentType | PointerHandler.ApprovesTakeOverByItems
+        grabPermissions: PointerHandler.ApprovesTakeOverByHandlersOfSameType | PointerHandler.ApprovesTakeOverByHandlersOfDifferentType | PointerHandler.ApprovesTakeOverByItems
 
         property var oldPos
         property real oldTranslationY

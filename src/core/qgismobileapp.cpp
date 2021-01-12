@@ -403,6 +403,7 @@ void QgisMobileapp::initDeclarative()
   rootContext()->setContextProperty( "ppi", dpi );
   rootContext()->setContextProperty( "mouseDoubleClickInterval", QApplication::styleHints()->mouseDoubleClickInterval() );
   rootContext()->setContextProperty( "qgisProject", mProject );
+  rootContext()->setContextProperty( "qgisProjet", mProject );
   rootContext()->setContextProperty( "iface", mIface );
   rootContext()->setContextProperty( "settings", &mSettings );
   rootContext()->setContextProperty( "appVersion", QString( "" APP_VERSION ) );
@@ -551,6 +552,7 @@ void QgisMobileapp::onAfterFirstRendering()
     }
     else if ( !PlatformUtilities::instance()->qgsProject().isNull() )
     {
+      PlatformUtilities::instance()->checkWriteExternalStoragePermissions();
       loadProjectFile( PlatformUtilities::instance()->qgsProject() );
     }
     mFirstRenderingFlag = false;

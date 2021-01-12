@@ -23,8 +23,8 @@ Item{
     property string device: ''
 
     // proxy variables
-    property bool active
-    property string name
+    property bool active: false
+    property string name: ''
     property bool valid: qtPositionSource.valid || bluetoothPositionSource.valid
     property alias bluetoothSocketState: bluetoothPositionSource.socketState
     property bool currentness: false
@@ -81,7 +81,19 @@ Item{
         }
 
         onPositionChanged: {
-            positionSource.positionInfo = bluetoothPositionSource.fromQGeoPositionInfo(name)
+            positionSource.positionInfo = bluetoothPositionSource.createGnssPositionInformation(
+                        qtPositionSource.position.coordinate.latitude,
+                        qtPositionSource.position.coordinate.longitude,
+                        qtPositionSource.position.coordinate.altitude,
+                        qtPositionSource.position.speed,
+                        qtPositionSource.position.direction,
+                        qtPositionSource.position.horizontalAccuracy,
+                        qtPositionSource.position.verticalAccuracy,
+                        qtPositionSource.position.verticalSpeed,
+                        qtPositionSource.position.magneticVariation,
+                        qtPositionSource.position.timestamp,
+                        qtPositionSource.name
+            )
         }
     }
 

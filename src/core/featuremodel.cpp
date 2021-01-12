@@ -396,6 +396,18 @@ void FeatureModel::reset()
   mLayer->rollBack();
 }
 
+void FeatureModel::refresh()
+{
+  if ( !mLayer || FID_IS_NEW( mFeature.id() ) )
+    return;
+
+  QgsFeature feat;
+  if ( mLayer->getFeatures( QgsFeatureRequest().setFilterFid( mFeature.id() ) ).nextFeature( feat ) )
+  {
+    setFeature( feat );
+  }
+}
+
 bool FeatureModel::suppressFeatureForm() const
 {
   if ( !mLayer )
@@ -490,7 +502,14 @@ void FeatureModel::applyGeometry()
         break;
     }
     if ( !intersectionLayers.isEmpty() )
-      geometry.avoidIntersections( intersectionLayers );
+    {
+      QHash<QgsVectorLayer *, QSet<QgsFeatureId>> ignoredFeature;
+      if ( mFeature.id() != FID_NULL )
+      {
+        ignoredFeature.insert( mLayer, QSet<QgsFeatureId>() << mFeature.id() );
+      }
+      geometry.avoidIntersections( intersectionLayers, ignoredFeature );
+    }
   }
 
   if ( mLayer && mLayer->geometryOptions()->geometryPrecision() == 0.0 )
@@ -722,6 +741,14 @@ void FeatureModel::applyVertexModelToGeometry()
     return;
 
   mFeature.setGeometry( mVertexModel->geometry() );
+}
+
+void FeatureModel::applyGeometryToVertexModel()
+{
+  if ( !mVertexModel )
+    return;
+
+  mVertexModel->setGeometry( mFeature.geometry() );
 }
 
 // a filter to gather all matches at the same place

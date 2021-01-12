@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-18.04
     name: Backport
     steps:
+      - uses: actions/checkout@v2
       - name: Backport
-        uses: tibdex/backport@v1
+        uses: m-kuhn/backport@v1.1.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

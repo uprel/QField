@@ -144,7 +144,7 @@ Popup {
           font: Theme.defaultFont
           text: switch(cloudProjectsModel.currentProjectData.Status ) {
                   case QFieldCloudProjectsModel.Downloading:
-                    switch ( cloudProjectsModel.currentProjectData.DownloadJobStatus ) {
+                    switch ( cloudProjectsModel.currentProjectData.ExportStatus ) {
                       case QFieldCloudProjectsModel.ExportFinishedStatus:
                         return qsTr('Downloading %1%…').arg( parseInt(cloudProjectsModel.currentProjectData.DownloadProgress * 100) )
                       default:
@@ -181,7 +181,7 @@ Popup {
             smooth: true
             source: switch(cloudProjectsModel.currentProjectData.Status ) {
                     case QFieldCloudProjectsModel.Downloading:
-                      switch ( cloudProjectsModel.currentProjectData.DownloadJobStatus ) {
+                      switch ( cloudProjectsModel.currentProjectData.ExportStatus ) {
                         case QFieldCloudProjectsModel.ExportFinishedStatus:
                           return Theme.getThemeVectorIcon('ic_cloud_download_24dp');
                         default:

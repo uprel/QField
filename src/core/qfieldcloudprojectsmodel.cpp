@@ -327,8 +327,8 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
   if ( mCloudProjects[index].modification & LocalModification )
     return;
 
-  mCloudProjects[index].downloadJobStatus = ExportUnstartedStatus;
-  mCloudProjects[index].downloadJobStatusString = QString();
+  mCloudProjects[index].exportStatus = ExportUnstartedStatus;
+  mCloudProjects[index].exportStatusString = QString();
   mCloudProjects[index].downloadFileTransfers.clear();
   mCloudProjects[index].downloadFilesFinished = 0;
   mCloudProjects[index].downloadFilesFailed = 0;
@@ -366,7 +366,7 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
 
     const QJsonObject payload = QJsonDocument::fromJson( rawReply->readAll() ).object();
     Q_ASSERT( ! payload.isEmpty() );
-    mCloudProjects[index].downloadJobStatus = exportStatus( payload.value( QStringLiteral( "status" ) ).toString() );
+    mCloudProjects[index].exportStatus = exportStatus( payload.value( QStringLiteral( "status" ) ).toString() );
 
     emit dataChanged( idx, idx, QVector<int>() << ExportStatusRole );
 
@@ -383,12 +383,12 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
     return;
 
   Q_ASSERT( index >= 0 && index < mCloudProjects.size() );
-  Q_ASSERT( mCloudProjects[index].downloadJobStatus != ExportUnstartedStatus );
+  Q_ASSERT( mCloudProjects[index].exportStatus != ExportUnstartedStatus );
 
   QModelIndex idx = createIndex( index, 0 );
   NetworkReply *downloadStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/qfield-files/export/%1/" ).arg( projectId ) );
 
-  mCloudProjects[index].downloadJobStatusString = QString();
+  mCloudProjects[index].exportStatusString = QString();
 
   connect( downloadStatusReply, &NetworkReply::finished, this, [ = ]()
   {
@@ -400,11 +400,11 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
     Q_ASSERT( rawReply );
     Q_ASSERT( ! payload.isEmpty() );
 
-    mCloudProjects[index].downloadJobStatus = ( rawReply->error() == QNetworkReply::NoError )
+    mCloudProjects[index].exportStatus = ( rawReply->error() == QNetworkReply::NoError )
         ? exportStatus( payload.value( QStringLiteral( "status" ) ).toString() )
         : ExportErrorStatus;
 
-    switch ( mCloudProjects[index].downloadJobStatus )
+    switch ( mCloudProjects[index].exportStatus )
     {
       case ExportUnstartedStatus:
         // download export job should be already started!!!
@@ -423,17 +423,17 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
         mCloudProjects[index].errorStatus = DownloadErrorStatus;
 
         if ( rawReply->error() == QNetworkReply::NoError )
-//          mCloudProjects[index].downloadJobStatusString = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
-          mCloudProjects[index].downloadJobStatusString = tr( "Export failed" );
+//          mCloudProjects[index].ExportStatusString = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
+          mCloudProjects[index].exportStatusString = tr( "Export failed" );
         else
-          mCloudProjects[index].downloadJobStatusString = QFieldCloudConnection::errorString( rawReply );
+          mCloudProjects[index].exportStatusString = QFieldCloudConnection::errorString( rawReply );
 
         emit dataChanged( idx, idx, QVector<int>() << StatusRole << ExportStatusRole << DownloadErrorStatus );
         break;
       case ExportFinishedStatus:
         NetworkReply *exportedFilesReply = mCloudConnection->get( QStringLiteral( "/api/v1/qfield-files/%1/" ).arg( projectId ) );
 
-        mCloudProjects[index].downloadJobStatusString = QString();
+        mCloudProjects[index].exportStatusString = QString();
 
         connect( exportedFilesReply, &NetworkReply::finished, exportedFilesReply, [ = ]()
         {
@@ -444,9 +444,9 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
             mCloudProjects[index].errorStatus = DownloadErrorStatus;
 
             if ( exportedFilesRawReply->error() == QNetworkReply::NoError )
-              mCloudProjects[index].downloadJobStatusString = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
+              mCloudProjects[index].exportStatusString = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
             else
-              mCloudProjects[index].downloadJobStatusString = QFieldCloudConnection::errorString( exportedFilesRawReply );
+              mCloudProjects[index].exportStatusString = QFieldCloudConnection::errorString( exportedFilesRawReply );
 
             emit dataChanged( idx, idx, QVector<int>() << StatusRole << ExportStatusRole << DownloadErrorStatus );
             return;
@@ -1152,7 +1152,7 @@ QHash<int, QByteArray> QFieldCloudProjectsModel::roleNames() const
   roles[ErrorStatusRole] = "ErrorStatus";
   roles[ErrorStringRole] = "ErrorString";
   roles[DownloadProgressRole] = "DownloadProgress";
-  roles[ExportStatusRole] = "DownloadJobStatus";
+  roles[ExportStatusRole] = "ExportStatus";
   roles[UploadAttachmentsProgressRole] = "UploadAttachmentsProgress";
   roles[UploadDeltaProgressRole] = "UploadDeltaProgress";
   roles[UploadDeltaStatusRole] = "UploadDeltaStatus";
@@ -1263,12 +1263,12 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
       return static_cast<int>( mCloudProjects.at( index.row() ).errorStatus );
     case ErrorStringRole:
       return mCloudProjects.at( index.row() ).errorStatus == DownloadErrorStatus
-          ? mCloudProjects.at( index.row() ).downloadJobStatusString
+          ? mCloudProjects.at( index.row() ).exportStatusString
           : mCloudProjects.at( index.row() ).errorStatus == UploadErrorStatus
             ? mCloudProjects.at( index.row() ).deltaFileUploadStatusString
             : QString();
     case ExportStatusRole:
-      return mCloudProjects.at( index.row() ).downloadJobStatus;
+      return mCloudProjects.at( index.row() ).exportStatus;
     case DownloadProgressRole:
     return mCloudProjects.at( index.row() ).downloadProgress;
     case UploadAttachmentsProgressRole:

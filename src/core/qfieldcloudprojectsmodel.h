@@ -303,8 +303,8 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       QString deltaFileUploadStatusString;
       QStringList deltaLayersToDownload;
 
-      ExportStatus downloadJobStatus = ExportUnstartedStatus;
-      QString downloadJobStatusString;
+      ExportStatus exportStatus = ExportUnstartedStatus;
+      QString exportStatusString;
       QMap<QString, FileTransfer> downloadFileTransfers;
       int downloadFilesFinished = 0;
       int downloadFilesFailed = 0;

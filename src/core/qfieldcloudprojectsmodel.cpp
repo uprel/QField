@@ -304,9 +304,8 @@ QFieldCloudProjectsModel::ExportStatus QFieldCloudProjectsModel::exportStatus( c
     return ExportBusyStatus;
   else if ( statusUpper == QStringLiteral( "STATUS_EXPORTED" ) )
     return ExportFinishedStatus;
-  else if ( statusUpper == QStringLiteral( "STATUS_ERROR" ) )
-    return ExportErrorStatus;
   else
+    // "STATUS_ERROR" or any unknown status is considered an error
     return ExportErrorStatus;
 }
 

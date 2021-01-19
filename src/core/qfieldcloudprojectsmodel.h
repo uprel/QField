@@ -111,10 +111,13 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     //! The status of the running server job for applying deltas on a project.
     enum DeltaFileStatus
     {
-      DeltaFileErrorStatus,
-      DeltaFileLocalStatus,
-      DeltaFilePendingStatus,
-      DeltaFileAppliedStatus,
+      DeltaErrorStatus,
+      DeltaLocalStatus,
+      DeltaPendingStatus,
+      DeltaBusyStatus,
+      DeltaConflictStatus,
+      DeltaNotAppliedStatus,
+      DeltaAppliedStatus,
     };
 
     Q_ENUM( DeltaFileStatus )
@@ -299,7 +302,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       QString localPath;
 
       QString deltaFileId;
-      DeltaFileStatus deltaFileUploadStatus = DeltaFileLocalStatus;
+      DeltaFileStatus deltaFileUploadStatus = DeltaLocalStatus;
       QString deltaFileUploadStatusString;
       QStringList deltaLayersToDownload;
 
@@ -335,6 +338,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     void projectCancelUpload( const QString &projectId );
     void projectUploadAttachments( const QString &projectId );
+    void projectApplyDeltas( const QString &projectId );
     void projectGetDeltaStatus( const QString &projectId );
     void projectGetDownloadStatus( const QString &projectId );
     void projectDownloadLayers( const QString &projectId );

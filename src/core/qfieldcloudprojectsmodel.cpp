@@ -423,10 +423,17 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
         mCloudProjects[index].errorStatus = DownloadErrorStatus;
 
         if ( rawReply->error() == QNetworkReply::NoError )
-//          mCloudProjects[index].ExportStatusString = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
-          mCloudProjects[index].exportStatusString = tr( "Export failed" );
+        {
+          QString output = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
+
+          mCloudProjects[index].exportStatusString = output.size() > 0
+              ? output
+              : tr( "Export failed" );
+        }
         else
+        {
           mCloudProjects[index].exportStatusString = QFieldCloudConnection::errorString( rawReply );
+        }
 
         emit dataChanged( idx, idx, QVector<int>() << StatusRole << ExportStatusRole << DownloadErrorStatus );
         break;

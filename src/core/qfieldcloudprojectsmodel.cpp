@@ -859,6 +859,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
         Q_ASSERT( 0 );
         break;
       case DeltaPendingStatus:
+      case DeltaBusyStatus:
         // infinite retry, there should be one day, when we can get the status!
         QTimer::singleShot( sDelayBeforeStatusRetry, [ = ]()
         {
@@ -874,6 +875,8 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
         projectCancelUpload( projectId );
         return;
+      case DeltaConflictStatus:
+      case DeltaNotAppliedStatus:
       case DeltaAppliedStatus:
         delete networkDeltaStatusCheckedParent;
 

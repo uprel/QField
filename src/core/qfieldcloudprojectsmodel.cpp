@@ -945,7 +945,7 @@ void QFieldCloudProjectsModel::projectApplyDeltas( const QString &projectId )
   Q_ASSERT( index >= 0 && index < mCloudProjects.size() );
 
   QModelIndex idx = createIndex( index, 0 );
-  NetworkReply *reply = mCloudConnection->get( QStringLiteral( "/api/v1/deltas/%1/" ).arg( mCloudProjects[index].id ) );
+  NetworkReply *reply = mCloudConnection->post( QStringLiteral( "/api/v1/deltas/apply/%1/" ).arg( mCloudProjects[index].id ) );
 
   connect( reply, &NetworkReply::finished, this, [ = ]()
   {
@@ -957,11 +957,13 @@ void QFieldCloudProjectsModel::projectApplyDeltas( const QString &projectId )
 
     if ( rawReply->error() != QNetworkReply::NoError )
     {
+      mCloudProjects[index].status = ProjectStatus::Idle;
       mCloudProjects[index].deltaFileUploadStatus = DeltaErrorStatus;
       mCloudProjects[index].deltaFileUploadStatusString = QFieldCloudConnection::errorString( rawReply );
 
       emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
       emit networkDeltaStatusChecked( projectId );
+      return;
     }
 
     projectGetDeltaStatus( projectId );

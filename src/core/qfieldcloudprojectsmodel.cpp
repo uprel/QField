@@ -408,7 +408,7 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
       case ExportUnstartedStatus:
         // download export job should be already started!!!
         Q_ASSERT( 0 );
-        break;
+        FALLTHROUGH
       case ExportPendingStatus:
       case ExportBusyStatus:
         // infinite retry, there should be one day, when we can get the status!
@@ -857,7 +857,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
       case DeltaLocalStatus:
         // delta file should be already sent!!!
         Q_ASSERT( 0 );
-        break;
+        FALLTHROUGH
       case DeltaPendingStatus:
       case DeltaBusyStatus:
         // infinite retry, there should be one day, when we can get the status!

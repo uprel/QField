@@ -115,6 +115,7 @@
 #include "bluetoothdevicemodel.h"
 #include "gnsspositioninformation.h"
 #include "changelogcontents.h"
+#include "layerresolver.h"
 #include "qfieldcloudconnection.h"
 #include "qfieldcloudprojectsmodel.h"
 #include "qfieldcloudutils.h"
@@ -262,7 +263,7 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
   connect( mProject, &QgsProject::readProject, this, &QgisMobileapp::onReadProject );
 
   mLayerTreeCanvasBridge = new LayerTreeMapCanvasBridge( mFlatLayerTree, mMapCanvas->mapSettings(), mTrackingModel, this );
-  connect( this, &QgisMobileapp::loadProjectStarted, mIface, &AppInterface::loadProjectStarted );
+  connect( this, &QgisMobileapp::loadProjectTriggered, mIface, &AppInterface::loadProjectTriggered );
   connect( this, &QgisMobileapp::loadProjectEnded, mIface, &AppInterface::loadProjectEnded );
   QTimer::singleShot( 1, this, &QgisMobileapp::onAfterFirstRendering );
 
@@ -370,6 +371,7 @@ void QgisMobileapp::initDeclarative()
   qmlRegisterType<BluetoothDeviceModel>( "org.qfield", 1, 0, "BluetoothDeviceModel" );
   qmlRegisterType<BluetoothReceiver>( "org.qfield", 1, 0, "BluetoothReceiver" );
   qmlRegisterType<ChangelogContents>( "org.qfield", 1, 0, "ChangelogContents" );
+  qmlRegisterType<LayerResolver>( "org.qfield", 1, 0, "LayerResolver" );
   qmlRegisterType<QFieldCloudConnection>( "org.qfield", 1, 0, "QFieldCloudConnection" );
   qmlRegisterType<QFieldCloudProjectsModel>( "org.qfield", 1, 0, "QFieldCloudProjectsModel" );
 
@@ -418,10 +420,8 @@ void QgisMobileapp::initDeclarative()
   rootContext()->setContextProperty( "gpkgFlusher", mGpkgFlusher.get() );
   rootContext()->setContextProperty( "layerObserver", mLayerObserver.get() );
 
-// Check QGIS Version
-#if VERSION_INT >= 30600
   rootContext()->setContextProperty( "qfieldAuthRequestHandler", mAuthRequestHandler );
-#endif
+
   rootContext()->setContextProperty( "trackingModel", mTrackingModel );
 
   addImageProvider( QLatin1String( "legend" ), mLegendImageProvider );
@@ -566,28 +566,41 @@ void QgisMobileapp::loadLastProject()
     loadProjectFile( lastProjectFile.toString() );
 }
 
-void QgisMobileapp::loadProjectFile( const QString &path )
+void QgisMobileapp::loadProjectFile( const QString &path, const QString &name )
 {
-// Check QGIS Version
-#if VERSION_INT >= 30600
+  QFileInfo fi( path );
+  if ( !fi.exists() )
+    QgsMessageLog::logMessage( tr( "Project file \"%1\" does not exist" ).arg( path ), QStringLiteral( "QField" ), Qgis::Warning );
+
   mAuthRequestHandler->clearStoredRealms();
-#endif
-  reloadProjectFile( path );
+
+  mProjectPath = path;
+  mProjectName = name.isEmpty() ? name : fi.completeBaseName();
+
+  emit loadProjectTriggered( mProjectPath, mProjectName );
 }
 
-void QgisMobileapp::reloadProjectFile( const QString &path )
+void QgisMobileapp::reloadProjectFile()
 {
-  if ( ! QFile::exists( path ) )
-    QgsMessageLog::logMessage( tr( "Project file \"%1\" does not exist" ).arg( path ), QStringLiteral( "QField" ), Qgis::Warning );
+  if ( mProjectPath.isEmpty() )
+    QgsMessageLog::logMessage( tr( "No project file currently opened" ), QStringLiteral( "QField" ), Qgis::Warning );
+
+  emit loadProjectTriggered( mProjectPath, mProjectName );
+}
+
+void QgisMobileapp::readProjectFile()
+{
+  QFileInfo fi( mProjectPath );
+  if ( !fi.exists() )
+    QgsMessageLog::logMessage( tr( "Project file \"%1\" does not exist" ).arg( mProjectPath ), QStringLiteral( "QField" ), Qgis::Warning );
 
   mProject->removeAllMapLayers();
   mTrackingModel->reset();
 
-  emit loadProjectStarted( path );
-  mProject->read( path );
+  mProject->read( mProjectPath );
 
   // load fonts in same directory
-  QDir fontDir = QDir::cleanPath( QFileInfo( path ).absoluteDir().path() + QDir::separator() + ".fonts" );
+  QDir fontDir = QDir::cleanPath( QFileInfo( mProjectPath ).absoluteDir().path() + QDir::separator() + ".fonts" );
   QStringList fontExts = QStringList() << "*.ttf" << "*.TTF" << "*.otf" << "*.OTF";
   const QStringList fontFiles = fontDir.entryList( fontExts, QDir::Files );
   for ( const QString &fontFile : fontFiles )

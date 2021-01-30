@@ -6,16 +6,25 @@ import QtQuick.Layouts 1.12
 import org.qfield 1.0
 import org.qgis 1.0
 import Theme 1.0
+
 import ".."
+import "."
 
-
-Item {
+EditorWidgetBase {
   id: valueRelation
-
-  signal valueChanged(var value, bool isNull)
 
   height: Number(config['AllowMulti']) !== 1 ? valueRelationCombobox.height : valueRelationList.height
   enabled: true
+
+  LayerResolver {
+      id: layerResolver
+
+      layerId: config['Layer']
+      layerName: config['LayerName']
+      layerSource: config['LayerSource']
+      layerProviderName: config['LayerProviderName']
+      project: qgisProject
+  }
 
   RelationCombobox {
     id: valueRelationCombobox
@@ -32,7 +41,7 @@ Item {
       attributeField: field
       //passing "" instead of undefined, so the model is cleared on adding new features
       attributeValue: value !== undefined ? value : ""
-      currentLayer: qgisProject.mapLayer(config['Layer'])
+      currentLayer: layerResolver.currentLayer
       currentFormFeature: currentFeature
       keyField: config['Key']
       displayValueField: config['Value']
@@ -46,7 +55,7 @@ Item {
     }
   }
 
-  Rectangle{
+  Rectangle {
     id: valueRelationList
 
     visible: Number(config['AllowMulti']) === 1
@@ -61,11 +70,11 @@ Item {
     border.width: 1
 
     FeatureCheckListModel {
-      id: listModel
+        id: listModel
         attributeField: field
         //passing "" instead of undefined, so the model is cleared on adding new features
         attributeValue: value !== undefined ? value : ""
-        currentLayer: qgisProject.mapLayer(config['Layer'])
+        currentLayer: layerResolver.currentLayer
         currentFormFeature: currentFeature
         keyField: config['Key']
         displayValueField: config['Value']
@@ -74,7 +83,7 @@ Item {
         filterExpression: config['FilterExpression']
         allowMulti: true
         onListUpdated: {
-          valueRelation.valueChanged( attributeValue, false )
+            valueRelation.valueChanged( attributeValue, false )
         }
     }
 
@@ -104,17 +113,15 @@ Item {
       Item {
         id: listItem
         anchors { left: parent ? parent.left : undefined; right: parent ? parent.right : undefined }
+        height: Math.max( valueRelationList.itemHeight, valueText.height )
 
         focus: true
 
-        height: Math.max( valueRelationList.itemHeight, valueText.height )
-
-        Row{
+        Row {
           id: checkBoxRow
-          anchors { top: parent.top; left: parent.left }
           height: listItem.height
 
-          CheckBox {
+          CheckDelegate {
             id: checkBox
             width: parent.height
             height: parent.height
@@ -131,21 +138,21 @@ Item {
             indicator.implicitHeight: 24
             indicator.implicitWidth: 24
           }
-        }
 
-        Text {
-          id: valueText
-          anchors { leftMargin: 10; left: checkBoxRow.right; right: parent.right; verticalCenter: parent.verticalCenter }
-          font.bold: true
-          color: !isEnabled ? 'grey' : 'black'
-          text: { text: model.displayString }
+          Text {
+            id: valueText
+            anchors.verticalCenter: parent.verticalCenter
+            font: Theme.defaultFont
+            color: !isEnabled ? 'grey' : 'black'
+            text: { text: model.displayString }
+          }
         }
 
         MouseArea {
           anchors.fill: parent
 
           onClicked: {
-            if( isEnabled ){
+            if (isEnabled) {
               checkBox.checked = !checkBox.checked
             }
           }

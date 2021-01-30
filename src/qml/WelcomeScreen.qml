@@ -7,6 +7,8 @@ import org.qfield 1.0
 import Theme 1.0
 
 Page {
+  id: welcomeScreen
+
   property alias model: table.model
   signal showOpenProjectDialog
   signal showQFieldCloudScreen
@@ -132,6 +134,7 @@ Page {
           delegate: Rectangle {
             id: rectangle
             property string path: ProjectPath
+            property string title: ProjectTitle
             property var type: ProjectType
             width: parent ? parent.width : undefined
             height: line.height
@@ -199,7 +202,7 @@ Page {
                 if ( item.type == 1 && cloudConnection.hasToken && cloudConnection.status !== QFieldCloudConnection.LoggedIn ) {
                   cloudConnection.login()
                 }
-                iface.loadProject(item.path)
+                iface.loadProject(item.path,item.title)
               }
             }
             onPressed: {

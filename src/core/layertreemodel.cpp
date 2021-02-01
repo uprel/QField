@@ -22,6 +22,7 @@
 #include <qgsmapthemecollection.h>
 #include <qgsrasterlayer.h>
 #include <qgsvectorlayer.h>
+#include <qgsvectorlayerfeaturecounter.h>
 
 FlatLayerTreeModel::FlatLayerTreeModel( QgsLayerTree *layerTree, QgsProject *project, QObject *parent )
   : QSortFilterProxyModel( parent )
@@ -391,6 +392,9 @@ QModelIndex FlatLayerTreeModelBase::index( int row, int column, const QModelInde
 
 QVariant FlatLayerTreeModelBase::data( const QModelIndex &index, int role ) const
 {
+  if ( mFrozen )
+    return QVariant();
+
   switch ( role )
   {
     case FlatLayerTreeModel::VectorLayerPointer:
@@ -691,6 +695,20 @@ QVariant FlatLayerTreeModelBase::data( const QModelIndex &index, int role ) cons
       if ( !layer ) // Group
         return -1;
 
+      // For now, do not count feature on WFS layers, it can lead to long hangs
+      if ( layer->dataProvider() && layer->dataProvider()->name() == QStringLiteral( "WFS" ) )
+        return QVariant();
+
+      if ( layer->renderer() && layer->renderer()->legendSymbolItems().size() > 0 )
+      {
+        const long count = layer->featureCount( layer->renderer()->legendSymbolItems().at( 0 ).ruleKey() );
+        if (  count == -1 )
+        {
+          connect( layer, &QgsVectorLayer::symbolFeatureCountMapChanged, this, &FlatLayerTreeModelBase::featureCountChanged, Qt::UniqueConnection );
+          layer->countSymbolFeatures();
+        }
+        return QVariant::fromValue<long>( count );
+      }
       return QVariant::fromValue<long>( layer->featureCount() );
     }
 
@@ -777,6 +795,11 @@ bool FlatLayerTreeModelBase::setData( const QModelIndex &index, const QVariant &
     default:
       return false;
   }
+}
+
+void FlatLayerTreeModelBase::featureCountChanged()
+{
+  emit dataChanged( createIndex( 0, 0 ), createIndex( rowCount() - 1, 0 ), QVector<int>() << FlatLayerTreeModel::FeatureCount );
 }
 
 QHash<int, QByteArray> FlatLayerTreeModelBase::roleNames() const

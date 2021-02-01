@@ -58,6 +58,7 @@ Item {
     parent: ApplicationWindow.overlay
     x: 24
     y: 24
+    z: 10000 // 1000s are embedded feature forms, use a higher value to insure feature form popups always show above embedded feature formes
     width: parent.width - 48
     height: parent.height - 48
     padding: 0
@@ -106,27 +107,33 @@ Item {
         }
       }
 
-      Image {
-        id: clearButton
-        z: 1
-        width: fontMetrics.height
-        height: fontMetrics.height
-        source: Theme.getThemeIcon("ic_clear_black_18dp")
-        sourceSize.width: 20 * screen.devicePixelRatio
-        sourceSize.height: 20 * screen.devicePixelRatio
-        fillMode: Image.PreserveAspectFit
-        anchors.top: searchField.top
-        anchors.right: searchField.right
-        anchors.topMargin: height - 7
-        anchors.rightMargin: height - 7
-        opacity: searchField.text.length > 0 ? 1 : 0.25
+      Rectangle {
+          id: clearButtonRect
+          z: 1
+          width: fontMetrics.height
+          height: fontMetrics.height
+          anchors { top: searchField.top; right: searchField.right; topMargin: height - 7; rightMargin: height - 7 }
+          color: "transparent"
 
-        MouseArea {
-          anchors.fill: parent
-          onClicked: {
-            searchField.text = '';
+          Image {
+              id: clearButton
+              z: 1
+              width: 20
+              height: 20
+              source: Theme.getThemeIcon("ic_clear_black_18dp")
+              sourceSize.width: 20 * screen.devicePixelRatio
+              sourceSize.height: 20 * screen.devicePixelRatio
+              fillMode: Image.PreserveAspectFit
+              anchors.centerIn: clearButtonRect
+              opacity: searchField.displayText.length > 0 ? 1 : 0.25
           }
-        }
+
+          MouseArea {
+              anchors.fill: parent
+              onClicked: {
+                  searchField.text = '';
+              }
+          }
       }
 
       ScrollView {
@@ -274,6 +281,10 @@ Item {
         onDoubleClicked: mouse.accepted = false;
         onPositionChanged: mouse.accepted = false;
         onPressAndHold: mouse.accepted = false;
+      }
+
+      Component.onCompleted: {
+          comboBox.popup.z = 10000 // 1000s are embedded feature forms, use a higher value to insure popups always show above embedded feature formes
       }
 
       contentItem: Text {

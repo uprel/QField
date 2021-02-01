@@ -7,6 +7,10 @@ import org.qfield 1.0
 import Theme 1.0
 
 Page {
+  id: welcomeScreen
+
+  property bool firstShown: false
+
   property alias model: table.model
   signal showOpenProjectDialog
   signal showQFieldCloudScreen
@@ -89,7 +93,7 @@ Page {
         QfButton {
           id: cloudProjectButton
           Layout.fillWidth: true
-          text: qsTr( "QFieldCloud Projects" )
+          text: qsTr( "QFieldCloud projects" )
           onClicked: {
             showQFieldCloudScreen()
           }
@@ -97,7 +101,7 @@ Page {
         QfButton {
           id: localProjectButton
           Layout.fillWidth: true
-          text: qsTr( "Open Local Project" )
+          text: qsTr( "Open local file" )
           onClicked: {
             showOpenProjectDialog()
           }
@@ -132,6 +136,7 @@ Page {
           delegate: Rectangle {
             id: rectangle
             property string path: ProjectPath
+            property string title: ProjectTitle
             property var type: ProjectType
             width: parent ? parent.width : undefined
             height: line.height
@@ -174,7 +179,7 @@ Page {
                   text: {
                     if (index == 0) {
                         var firstRun = !settings.value( "/QField/FirstRunFlag", false )
-                        return !firstRun && qgisProject.fileName == '' ? qsTr( "Last session" ) : ""
+                        return !firstRun && firstShown === false ? qsTr( "Last session" ) : ""
                     }
                     else
                     {
@@ -199,7 +204,7 @@ Page {
                 if ( item.type == 1 && cloudConnection.hasToken && cloudConnection.status !== QFieldCloudConnection.LoggedIn ) {
                   cloudConnection.login()
                 }
-                iface.loadProject(item.path)
+                iface.loadFile(item.path,item.title)
               }
             }
             onPressed: {
@@ -380,7 +385,7 @@ Page {
 
   function adjustWelcomeScreen() {
     if (visible) {
-      if (qgisProject.fileName != '') {
+      if (firstShown) {
         welcomeText.text = " ";
         currentProjectButton.visible = true
       } else {
@@ -391,6 +396,7 @@ Page {
           welcomeText.text = qsTr( "Welcome back to QField." )
         }
         currentProjectButton.visible = false
+        firstShown = true
       }
     }
   }

@@ -182,6 +182,19 @@ void FeatureModel::setLinkedFeatureValues()
   emit featureChanged();
 }
 
+bool FeatureModel::positionLocked() const
+{
+  return mPositionLocked;
+}
+
+void FeatureModel::setPositionLocked( bool positionLocked )
+{
+  if ( mPositionLocked == positionLocked )
+    return;
+  mPositionLocked = positionLocked;
+  emit positionLockedChanged();
+}
+
 void FeatureModel::setLinkedParentFeature( const QgsFeature &feature )
 {
   if ( mLinkedParentFeature == feature )
@@ -416,6 +429,12 @@ bool FeatureModel::suppressFeatureForm() const
   return mLayer->editFormConfig().suppress() == QgsEditFormConfig::FeatureFormSuppress::SuppressOn;
 }
 
+void FeatureModel::resetFeature()
+{
+    mFeature = mLayer ? QgsFeature( mLayer->fields() ) : QgsFeature();
+    mRememberings[mLayer].rememberedAttributes.fill( false, mLayer->fields().size() );
+}
+
 void FeatureModel::resetAttributes()
 {
   if ( !mLayer )
@@ -423,7 +442,7 @@ void FeatureModel::resetAttributes()
 
   QgsExpressionContext expressionContext = mLayer->createExpressionContext();
   if ( mPositionInformation.isValid() )
-    expressionContext << ExpressionContextUtils::positionScope( mPositionInformation );
+    expressionContext << ExpressionContextUtils::positionScope( mPositionInformation, mPositionLocked );
 
   //set snapping_results to ExpressionScope...
   if ( mTopSnappingResult.isValid() )
@@ -512,7 +531,7 @@ void FeatureModel::applyGeometry()
     }
   }
 
-  if ( mLayer && mLayer->geometryOptions()->geometryPrecision() == 0.0 )
+  if ( geometry.wkbType() != QgsWkbTypes::Unknown && mLayer && mLayer->geometryOptions()->geometryPrecision() == 0.0 )
   {
     // Still do a bit of node cleanup
     QgsGeometry deduplicatedGeometry = geometry;

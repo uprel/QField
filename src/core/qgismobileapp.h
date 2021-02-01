@@ -36,9 +36,7 @@
 #include "qgsgpkgflusher.h"
 #include "geometryeditorsmodel.h"
 
-#if VERSION_INT >= 30600
 #include "qfieldappauthrequesthandler.h"
-#endif
 
 #include "platformutilities.h"
 #if defined(Q_OS_ANDROID)
@@ -59,6 +57,10 @@ class LayerObserver;
 
 
 #define REGISTER_SINGLETON(uri, _class, name) qmlRegisterSingletonType<_class>( uri, 1, 0, name, [] ( QQmlEngine *engine, QJSEngine *scriptEngine ) -> QObject * { Q_UNUSED(engine); Q_UNUSED(scriptEngine); return new _class(); } )
+
+#define SUPPORTED_PROJECT_EXTENSIONS QStringList( { QStringLiteral( "qgs" ), QStringLiteral( "qgz" ) } )
+#define SUPPORTED_VECTOR_EXTENSIONS    QStringList( { QStringLiteral( "gpkg" ), QStringLiteral( "shp" ), QStringLiteral( "kml" ), QStringLiteral( "kmz" ), QStringLiteral( "geojson" ), QStringLiteral( "json" ), QStringLiteral( "pdf" ) } )
+#define SUPPORTED_RASTER_EXTENSIONS    QStringList( { QStringLiteral( "tif" ), QStringLiteral( "pdf" ), QStringLiteral( "jpg" ), QStringLiteral( "png" ), QStringLiteral( "gpkg" ) } )
 
 
 class QgisMobileapp : public QQmlApplicationEngine
@@ -89,18 +91,29 @@ class QgisMobileapp : public QQmlApplicationEngine
     void loadLastProject();
 
     /**
-     * When called loads the project file found at path.
+     * Set the project or dataset file path to be loaded.
      *
-     * @param path The project file to load
+     * \param path The project or dataset file to load
+     * \param name The project name
+     * \note The actual loading is done in readProjectFile
      */
-    void loadProjectFile( const QString &path );
+    void loadProjectFile( const QString &path, const QString &name = QString() );
+
     /**
-     * Loads the project file found at path.
-     * It does not reset the Auth Request Handler.
+     * Reloads the current project
      *
-     * @param path The project file to load
+     * \param path The project file to load
+     * \param name The project name
+     * \note It does not reset the Auth Request Handler.
+     * \note The actual loading is done in readProjectFile
      */
-    void reloadProjectFile( const QString &path );
+    void reloadProjectFile();
+
+    /**
+     * Reads and opens the project file set in the loadProjectFile function
+     */
+    void readProjectFile();
+
     void print( int layoutIndex );
 
     bool event( QEvent *event ) override;
@@ -110,13 +123,19 @@ class QgisMobileapp : public QQmlApplicationEngine
      * Emitted when a project file is being loaded
      *
      * @param filename The filename of the project that is being loaded
+     * @param projectname The project name that is being loaded
      */
-    void loadProjectStarted( const QString &filename );
+    void loadProjectTriggered( const QString &filename, const QString &name );
 
     /**
      * Emitted when the project is fully loaded
      */
     void loadProjectEnded();
+
+    /**
+     * Emitted when a map canvas extent change is needed
+     */
+    void setMapExtent( const QgsRectangle &extent );
 
   private slots:
 
@@ -145,11 +164,13 @@ class QgisMobileapp : public QQmlApplicationEngine
     LegendImageProvider *mLegendImageProvider = nullptr;
 
     QgsProject *mProject = nullptr;
+    QString mProjectFilePath;
+    QString mProjectFileName;
+
     std::unique_ptr<QgsGpkgFlusher> mGpkgFlusher;
     std::unique_ptr<LayerObserver> mLayerObserver;
-#if VERSION_INT >= 30600
     QFieldAppAuthRequestHandler *mAuthRequestHandler = nullptr;
-#endif
+
     // Dummy objects. We are not able to call static functions from QML, so we need something here.
     QgsCoordinateReferenceSystem mCrsFactory;
     QgsUnitTypes mUnitTypes;

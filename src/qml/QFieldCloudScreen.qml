@@ -226,8 +226,8 @@ Page {
                                     case QFieldCloudProjectsModel.ProjectStatus.Idle:
                                       break
                                     case QFieldCloudProjectsModel.ProjectStatus.Downloading:
-                                      switch (DownloadJobStatus) {
-                                        case QFieldCloudProjectsModel.DownloadJobFinishedStatus:
+                                      switch (ExportStatus) {
+                                        case QFieldCloudProjectsModel.ExportFinishedStatus:
                                           status = qsTr( 'Downloading, %1% fetched…' ).arg( Math.round(DownloadProgress * 100) )
                                           break;
                                         default:

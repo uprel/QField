@@ -51,7 +51,7 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       ErrorStatusRole,
       ErrorStringRole,
       DownloadProgressRole,
-      DownloadJobStatusRole,
+      ExportStatusRole,
       UploadAttachmentsProgressRole,
       UploadDeltaProgressRole,
       UploadDeltaStatusRole,
@@ -111,26 +111,28 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     //! The status of the running server job for applying deltas on a project.
     enum DeltaFileStatus
     {
-      DeltaFileErrorStatus,
-      DeltaFileLocalStatus,
-      DeltaFilePendingStatus,
-      DeltaFileAppliedStatus,
+      DeltaErrorStatus,
+      DeltaLocalStatus,
+      DeltaPendingStatus,
+      DeltaBusyStatus,
+      DeltaConflictStatus,
+      DeltaNotAppliedStatus,
+      DeltaAppliedStatus,
     };
 
     Q_ENUM( DeltaFileStatus )
 
     //! The status of the running server job for exporting a project.
-    enum DownloadJobStatus
+    enum ExportStatus
     {
-      DownloadJobFailedStatus,
-      DownloadJobUnstartedStatus,
-      DownloadJobQueuedStatus,
-      DownloadJobStartedStatus,
-      DownloadJobDeferredStatus,
-      DownloadJobFinishedStatus,
+      ExportErrorStatus,
+      ExportUnstartedStatus,
+      ExportPendingStatus,
+      ExportBusyStatus,
+      ExportFinishedStatus,
     };
 
-    Q_ENUM( DownloadJobStatus )
+    Q_ENUM( ExportStatus )
 
     QFieldCloudProjectsModel();
 
@@ -229,7 +231,6 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     //
     void networkDeltaUploaded( const QString &projectId );
     void networkDeltaStatusChecked( const QString &projectId );
-    void networkDownloadStatusChecked( const QString &projectId );
     void networkAttachmentsUploaded( const QString &projectId );
     void networkAllAttachmentsUploaded( const QString &projectId );
     void networkLayerDownloaded( const QString &projectId );
@@ -301,13 +302,12 @@ class QFieldCloudProjectsModel : public QAbstractListModel
       QString localPath;
 
       QString deltaFileId;
-      DeltaFileStatus deltaFileUploadStatus = DeltaFileLocalStatus;
+      DeltaFileStatus deltaFileUploadStatus = DeltaLocalStatus;
       QString deltaFileUploadStatusString;
       QStringList deltaLayersToDownload;
 
-      QString downloadJobId;
-      DownloadJobStatus downloadJobStatus = DownloadJobUnstartedStatus;
-      QString downloadJobStatusString;
+      ExportStatus exportStatus = ExportUnstartedStatus;
+      QString exportStatusString;
       QMap<QString, FileTransfer> downloadFileTransfers;
       int downloadFilesFinished = 0;
       int downloadFilesFailed = 0;
@@ -338,12 +338,13 @@ class QFieldCloudProjectsModel : public QAbstractListModel
 
     void projectCancelUpload( const QString &projectId );
     void projectUploadAttachments( const QString &projectId );
+    void projectApplyDeltas( const QString &projectId );
     void projectGetDeltaStatus( const QString &projectId );
     void projectGetDownloadStatus( const QString &projectId );
     void projectDownloadLayers( const QString &projectId );
     bool projectMoveDownloadedFilesToPermanentStorage( const QString &projectId );
 
-    NetworkReply *downloadFile( const QString &exportJobId, const QString &fileName );
+    NetworkReply *downloadFile( const QString &projectId, const QString &fileName );
     void projectDownloadFiles( const QString &projectId );
 
     bool canSyncProject( const QString &projectId ) const;
@@ -351,6 +352,8 @@ class QFieldCloudProjectsModel : public QAbstractListModel
     bool deleteGpkgShmAndWal( const QStringList &gpkgFileNames );
     QStringList projectFileNames( const QString &projectPath, const QStringList &fileNames ) const;
     QStringList filterGpkgFileNames( const QStringList &fileNames ) const;
+
+    QFieldCloudProjectsModel::ExportStatus exportStatus( const QString &status ) const;
 };
 
 Q_DECLARE_METATYPE( QFieldCloudProjectsModel::ProjectStatus )

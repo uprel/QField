@@ -295,6 +295,20 @@ QString QFieldCloudProjectsModel::layerFileName( const QgsMapLayer *layer ) cons
   return layer->dataProvider()->dataSourceUri().split( '|' )[0];
 }
 
+QFieldCloudProjectsModel::ExportStatus QFieldCloudProjectsModel::exportStatus( const QString &status ) const
+{
+  const QString statusUpper = status.toUpper();
+  if ( statusUpper == QStringLiteral( "STATUS_PENDING" ) )
+    return ExportPendingStatus;
+  else if ( statusUpper == QStringLiteral( "STATUS_BUSY" ) )
+    return ExportBusyStatus;
+  else if ( statusUpper == QStringLiteral( "STATUS_EXPORTED" ) )
+    return ExportFinishedStatus;
+  else
+    // "STATUS_ERROR" or any unknown status is considered an error
+    return ExportErrorStatus;
+}
+
 void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
 {
   if ( !mCloudConnection )
@@ -312,9 +326,8 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
   if ( mCloudProjects[index].modification & LocalModification )
     return;
 
-  mCloudProjects[index].downloadJobId = QString();
-  mCloudProjects[index].downloadJobStatus = DownloadJobUnstartedStatus;
-  mCloudProjects[index].downloadJobStatusString = QString();
+  mCloudProjects[index].exportStatus = ExportUnstartedStatus;
+  mCloudProjects[index].exportStatusString = QString();
   mCloudProjects[index].downloadFileTransfers.clear();
   mCloudProjects[index].downloadFilesFinished = 0;
   mCloudProjects[index].downloadFilesFailed = 0;
@@ -331,9 +344,9 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
   // //////////
   // 1) request a new export the project
   // //////////
-  NetworkReply *reply = mCloudConnection->get( QStringLiteral( "/api/v1/qfield-files/%1/" ).arg( projectId ) );
+  NetworkReply *reply = mCloudConnection->post( QStringLiteral( "/api/v1/qfield-files/export/%1/" ).arg( projectId ) );
 
-  connect( reply, &NetworkReply::finished, this, [ = ]()
+  connect( reply, &NetworkReply::finished, reply, [ = ]()
   {
     QNetworkReply *rawReply = reply->reply();
     reply->deleteLater();
@@ -350,51 +363,13 @@ void QFieldCloudProjectsModel::downloadProject( const QString &projectId )
       return;
     }
 
-    const QJsonObject downloadJson = QJsonDocument::fromJson( rawReply->readAll() ).object();
-    mCloudProjects[index].downloadJobId = downloadJson.value( QStringLiteral( "jobid" ) ).toString();
-    // TODO probably better idea to get the status from downloadJson body
-    mCloudProjects[index].downloadJobStatus = DownloadJobStartedStatus;
+    const QJsonObject payload = QJsonDocument::fromJson( rawReply->readAll() ).object();
+    Q_ASSERT( ! payload.isEmpty() );
+    mCloudProjects[index].exportStatus = exportStatus( payload.value( QStringLiteral( "status" ) ).toString() );
 
-    emit dataChanged( idx, idx, QVector<int>() << DownloadJobStatusRole );
+    emit dataChanged( idx, idx, QVector<int>() << ExportStatusRole );
 
     projectGetDownloadStatus( projectId );
-  } );
-
-
-  // //////////
-  // 2) poll for download files export status until final status received
-  // //////////
-  QObject *networkDownloadStatusCheckedParent = new QObject( this ); // we need this to unsubscribe
-  connect( this, &QFieldCloudProjectsModel::networkDownloadStatusChecked, networkDownloadStatusCheckedParent, [ = ]( const QString & uploadedProjectId )
-  {
-    if ( projectId != uploadedProjectId )
-      return;
-
-    switch ( mCloudProjects[index].downloadJobStatus )
-    {
-      case DownloadJobUnstartedStatus:
-        // download export job should be already started!!!
-        Q_ASSERT( 0 );
-        break;
-      case DownloadJobQueuedStatus:
-      case DownloadJobStartedStatus:
-      case DownloadJobDeferredStatus:
-        // infinite retry, there should be one day, when we can get the status!
-        QTimer::singleShot( sDelayBeforeStatusRetry, [ = ]()
-        {
-          projectGetDownloadStatus( projectId );
-        } );
-        break;
-      case DownloadJobFailedStatus:
-        delete networkDownloadStatusCheckedParent;
-        emit downloadFinished( projectId, true, mCloudProjects[index].downloadJobStatusString );
-        return;
-      case DownloadJobFinishedStatus:
-        delete networkDownloadStatusCheckedParent;
-        // assumed that the file downloads are already in CloudProject.dowloadProjectFiles
-        projectDownloadFiles( projectId );
-        return;
-    }
   } );
 }
 
@@ -407,89 +382,105 @@ void QFieldCloudProjectsModel::projectGetDownloadStatus( const QString &projectI
     return;
 
   Q_ASSERT( index >= 0 && index < mCloudProjects.size() );
-  Q_ASSERT( mCloudProjects[index].downloadJobStatus != DownloadJobUnstartedStatus );
-  Q_ASSERT( ! mCloudProjects[index].downloadJobId.isEmpty() );
+  Q_ASSERT( mCloudProjects[index].exportStatus != ExportUnstartedStatus );
 
   QModelIndex idx = createIndex( index, 0 );
-  NetworkReply *downloadStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/qfield-files/export/%1/" ).arg( mCloudProjects[index].downloadJobId ) );
+  NetworkReply *downloadStatusReply = mCloudConnection->get( QStringLiteral( "/api/v1/qfield-files/export/%1/" ).arg( projectId ) );
 
-  mCloudProjects[index].downloadJobStatusString = QString();
+  mCloudProjects[index].exportStatusString = QString();
 
   connect( downloadStatusReply, &NetworkReply::finished, this, [ = ]()
   {
     QNetworkReply *rawReply = downloadStatusReply->reply();
+    const QJsonObject payload = QJsonDocument::fromJson( rawReply->readAll() ).object();
     downloadStatusReply->deleteLater();
 
     Q_ASSERT( downloadStatusReply->isFinished() );
     Q_ASSERT( rawReply );
-
-    if ( rawReply->error() != QNetworkReply::NoError )
-    {
-      mCloudProjects[index].status = ProjectStatus::Idle;
-      mCloudProjects[index].errorStatus = DownloadErrorStatus;
-      mCloudProjects[index].downloadJobStatus = DownloadJobFailedStatus;
-      // TODO this is oversimplification. e.g. 404 error is when the requested export id is not existent
-      mCloudProjects[index].downloadJobStatusString = QFieldCloudConnection::errorString( rawReply );
-
-      emit dataChanged( idx, idx, QVector<int>() << DownloadJobStatusRole );
-      emit networkDownloadStatusChecked( projectId );
-
-      return;
-    }
-
-    const QJsonObject payload = QJsonDocument::fromJson( rawReply->readAll() ).object();
-
     Q_ASSERT( ! payload.isEmpty() );
 
-    const QString status = payload.value( QStringLiteral( "status" ) ).toString().toUpper();
-    if ( status == QStringLiteral( "QUEUED" ) )
-      mCloudProjects[index].downloadJobStatus = DownloadJobQueuedStatus;
-    else if ( status == QStringLiteral( "STARTED" ) )
-      mCloudProjects[index].downloadJobStatus = DownloadJobStartedStatus;
-    else if ( status == QStringLiteral( "DEFERRED" ) )
-      mCloudProjects[index].downloadJobStatus = DownloadJobDeferredStatus;
-    else if ( status == QStringLiteral( "FINISHED" ) )
+    mCloudProjects[index].exportStatus = ( rawReply->error() == QNetworkReply::NoError )
+        ? exportStatus( payload.value( QStringLiteral( "status" ) ).toString() )
+        : ExportErrorStatus;
+
+    switch ( mCloudProjects[index].exportStatus )
     {
-      mCloudProjects[index].downloadJobStatus = DownloadJobFinishedStatus;
+      case ExportUnstartedStatus:
+        // download export job should be already started!!!
+        Q_ASSERT( 0 );
+        FALLTHROUGH
+      case ExportPendingStatus:
+      case ExportBusyStatus:
+        // infinite retry, there should be one day, when we can get the status!
+        QTimer::singleShot( sDelayBeforeStatusRetry, [ = ]()
+        {
+          projectGetDownloadStatus( projectId );
+        } );
+        break;
+      case ExportErrorStatus:
+        mCloudProjects[index].status = ProjectStatus::Idle;
+        mCloudProjects[index].errorStatus = DownloadErrorStatus;
 
-      const QJsonArray files = payload.value( QStringLiteral( "files" ) ).toArray();
-      for ( const QJsonValue file : files )
-      {
-        QJsonObject fileObject = file.toObject();
-        QString fileName = fileObject.value( QStringLiteral( "name" ) ).toString();
-        QString projectFileName = QStringLiteral( "%1/%2/%3" ).arg( QFieldCloudUtils::localCloudDirectory(), projectId, fileName );
-        QString cloudChecksum = fileObject.value( QStringLiteral( "sha256" ) ).toString();
-        QString localChecksum = FileUtils::fileChecksum( projectFileName, QCryptographicHash::Sha256 ).toHex();
+        if ( rawReply->error() == QNetworkReply::NoError )
+        {
+          QString output = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
 
-        if ( cloudChecksum == localChecksum )
-          continue;
+          mCloudProjects[index].exportStatusString = output.size() > 0
+              ? output
+              : tr( "Export failed" );
+        }
+        else
+        {
+          mCloudProjects[index].exportStatusString = QFieldCloudConnection::errorString( rawReply );
+        }
 
-        int fileSize = fileObject.value( QStringLiteral( "size" ) ).toInt();
+        emit dataChanged( idx, idx, QVector<int>() << StatusRole << ExportStatusRole << DownloadErrorStatus );
+        break;
+      case ExportFinishedStatus:
+        NetworkReply *exportedFilesReply = mCloudConnection->get( QStringLiteral( "/api/v1/qfield-files/%1/" ).arg( projectId ) );
 
-        mCloudProjects[index].downloadFileTransfers.insert( fileName, FileTransfer( fileName, fileSize ) );
-        mCloudProjects[index].downloadBytesTotal += std::max( fileSize, 0 );
-      }
+        mCloudProjects[index].exportStatusString = QString();
+
+        connect( exportedFilesReply, &NetworkReply::finished, exportedFilesReply, [ = ]()
+        {
+          QNetworkReply *exportedFilesRawReply = exportedFilesReply->reply();
+          if ( exportedFilesRawReply->error() != QNetworkReply::NoError )
+          {
+            mCloudProjects[index].status = ProjectStatus::Idle;
+            mCloudProjects[index].errorStatus = DownloadErrorStatus;
+
+            if ( exportedFilesRawReply->error() == QNetworkReply::NoError )
+              mCloudProjects[index].exportStatusString = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
+            else
+              mCloudProjects[index].exportStatusString = QFieldCloudConnection::errorString( exportedFilesRawReply );
+
+            emit dataChanged( idx, idx, QVector<int>() << StatusRole << ExportStatusRole << DownloadErrorStatus );
+            return;
+          }
+
+          const QJsonObject exportedFilesPayload = QJsonDocument::fromJson( exportedFilesRawReply->readAll() ).object();
+
+          const QJsonArray files = exportedFilesPayload.value( QStringLiteral( "files" ) ).toArray();
+          for ( const QJsonValue file : files )
+          {
+            QJsonObject fileObject = file.toObject();
+            QString fileName = fileObject.value( QStringLiteral( "name" ) ).toString();
+            QString projectFileName = QStringLiteral( "%1/%2/%3" ).arg( QFieldCloudUtils::localCloudDirectory(), projectId, fileName );
+            QString cloudChecksum = fileObject.value( QStringLiteral( "sha256" ) ).toString();
+            QString localChecksum = FileUtils::fileChecksum( projectFileName, QCryptographicHash::Sha256 ).toHex();
+
+            if ( cloudChecksum == localChecksum )
+              continue;
+
+            int fileSize = fileObject.value( QStringLiteral( "size" ) ).toInt();
+
+            mCloudProjects[index].downloadFileTransfers.insert( fileName, FileTransfer( fileName, fileSize ) );
+            mCloudProjects[index].downloadBytesTotal += std::max( fileSize, 0 );
+          }
+          projectDownloadFiles( projectId );
+        });
+        break;
     }
-    else if ( status == QStringLiteral( "FAILED" ) )
-    {
-      mCloudProjects[index].status = ProjectStatus::Idle;
-      mCloudProjects[index].errorStatus = DownloadErrorStatus;
-      mCloudProjects[index].downloadJobStatus = DownloadJobFailedStatus;
-      mCloudProjects[index].downloadJobStatusString = payload.value( QStringLiteral( "output" ) ).toString().split( '\n' ).last();
-
-      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadJobStatusRole << DownloadErrorStatus );
-    }
-    else
-    {
-      mCloudProjects[index].status = ProjectStatus::Idle;
-      mCloudProjects[index].errorStatus = DownloadErrorStatus;
-      mCloudProjects[index].downloadJobStatus = DownloadJobFailedStatus;
-      mCloudProjects[index].downloadJobStatusString = QStringLiteral( "Unknown status \"%1\"" ).arg( status );
-
-      emit dataChanged( idx, idx, QVector<int>() << StatusRole << DownloadJobStatusRole << DownloadErrorStatus );
-    }
-
-    emit networkDownloadStatusChecked( projectId );
   } );
 }
 
@@ -521,7 +512,7 @@ void QFieldCloudProjectsModel::projectDownloadFiles( const QString &projectId )
 
   for ( const QString &fileName : fileNames )
   {
-    NetworkReply *reply = downloadFile( mCloudProjects[index].downloadJobId, fileName );
+    NetworkReply *reply = downloadFile( projectId, fileName );
     QTemporaryFile *file = new QTemporaryFile( reply );
 
     file->setAutoRemove( false );
@@ -727,7 +718,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
   mCloudProjects[index].status = ProjectStatus::Uploading;
   mCloudProjects[index].deltaFileId = deltaFileWrapper->id();
-  mCloudProjects[index].deltaFileUploadStatus = DeltaFileLocalStatus;
+  mCloudProjects[index].deltaFileUploadStatus = DeltaLocalStatus;
   mCloudProjects[index].deltaFileUploadStatusString = QString();
 
   mCloudProjects[index].uploadAttachments.empty();
@@ -770,7 +761,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
   }
 
   // //////////
-  // 1) send delta file
+  // 1) upload the deltas
   // //////////
   NetworkReply *deltasCloudReply = mCloudConnection->post(
                                      QStringLiteral( "/api/v1/deltas/%1/" ).arg( projectId ),
@@ -806,7 +797,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
     }
 
     mCloudProjects[index].uploadDeltaProgress = 1;
-    mCloudProjects[index].deltaFileUploadStatus = DeltaFilePendingStatus;
+    mCloudProjects[index].deltaFileUploadStatus = DeltaPendingStatus;
     mCloudProjects[index].deltaLayersToDownload = deltaFileWrapper->deltaLayerIds();
 
     emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaProgressRole << UploadDeltaStatusRole );
@@ -831,7 +822,7 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
     if ( shouldDownloadUpdates )
     {
-      projectGetDeltaStatus( projectId );
+      projectApplyDeltas( projectId );
     }
     else
     {
@@ -863,18 +854,19 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
     switch ( mCloudProjects[index].deltaFileUploadStatus )
     {
-      case DeltaFileLocalStatus:
+      case DeltaLocalStatus:
         // delta file should be already sent!!!
         Q_ASSERT( 0 );
-        break;
-      case DeltaFilePendingStatus:
+        FALLTHROUGH
+      case DeltaPendingStatus:
+      case DeltaBusyStatus:
         // infinite retry, there should be one day, when we can get the status!
         QTimer::singleShot( sDelayBeforeStatusRetry, [ = ]()
         {
           projectGetDeltaStatus( projectId );
         } );
         break;
-      case DeltaFileErrorStatus:
+      case DeltaErrorStatus:
         delete networkDeltaStatusCheckedParent;
         deltaFileWrapper->resetId();
 
@@ -883,7 +875,9 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 
         projectCancelUpload( projectId );
         return;
-      case DeltaFileAppliedStatus:
+      case DeltaConflictStatus:
+      case DeltaNotAppliedStatus:
+      case DeltaAppliedStatus:
         delete networkDeltaStatusCheckedParent;
 
         deltaFileWrapper->reset();
@@ -947,6 +941,39 @@ void QFieldCloudProjectsModel::uploadProject( const QString &projectId, const bo
 }
 
 
+void QFieldCloudProjectsModel::projectApplyDeltas( const QString &projectId )
+{
+  const int index = findProject( projectId );
+
+  Q_ASSERT( index >= 0 && index < mCloudProjects.size() );
+
+  QModelIndex idx = createIndex( index, 0 );
+  NetworkReply *reply = mCloudConnection->post( QStringLiteral( "/api/v1/deltas/apply/%1/" ).arg( mCloudProjects[index].id ) );
+
+  connect( reply, &NetworkReply::finished, this, [ = ]()
+  {
+    QNetworkReply *rawReply = reply->reply();
+    reply->deleteLater();
+
+    Q_ASSERT( reply->isFinished() );
+    Q_ASSERT( rawReply );
+
+    if ( rawReply->error() != QNetworkReply::NoError )
+    {
+      mCloudProjects[index].status = ProjectStatus::Idle;
+      mCloudProjects[index].deltaFileUploadStatus = DeltaErrorStatus;
+      mCloudProjects[index].deltaFileUploadStatusString = QFieldCloudConnection::errorString( rawReply );
+
+      emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
+      emit networkDeltaStatusChecked( projectId );
+      return;
+    }
+
+    projectGetDeltaStatus( projectId );
+  });
+}
+
+
 void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 {
   const int index = findProject( projectId );
@@ -968,7 +995,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
     if ( rawReply->error() != QNetworkReply::NoError )
     {
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
+      mCloudProjects[index].deltaFileUploadStatus = DeltaErrorStatus;
       // TODO this is oversimplification. e.g. 404 error is when the requested delta file id is not existant
       mCloudProjects[index].deltaFileUploadStatusString = QFieldCloudConnection::errorString( rawReply );
 
@@ -984,7 +1011,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
     if ( ! mDeltaStatusListModel->isValid() )
     {
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFileErrorStatus;
+      mCloudProjects[index].deltaFileUploadStatus = DeltaErrorStatus;
       mCloudProjects[index].deltaFileUploadStatusString = mDeltaStatusListModel->errorString();
       emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
       emit networkDeltaStatusChecked( projectId );
@@ -995,7 +1022,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
 
     if ( ! mDeltaStatusListModel->allHaveFinalStatus() )
     {
-      mCloudProjects[index].deltaFileUploadStatus = DeltaFilePendingStatus;
+      mCloudProjects[index].deltaFileUploadStatus = DeltaPendingStatus;
       emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
       emit networkDeltaStatusChecked( projectId );
       return;
@@ -1004,7 +1031,7 @@ void QFieldCloudProjectsModel::projectGetDeltaStatus( const QString &projectId )
     // probably reseting the uniq ptr is not needed here, but it will be clear when the Delta Status UI is created
     mDeltaStatusListModel.reset();
 
-    mCloudProjects[index].deltaFileUploadStatus = DeltaFileAppliedStatus;
+    mCloudProjects[index].deltaFileUploadStatus = DeltaAppliedStatus;
 
     emit dataChanged( idx, idx,  QVector<int>() << UploadDeltaStatusRole << UploadDeltaStatusStringRole );
     emit networkDeltaStatusChecked( projectId );
@@ -1144,9 +1171,9 @@ void QFieldCloudProjectsModel::projectListReceived()
   reload( projects );
 }
 
-NetworkReply *QFieldCloudProjectsModel::downloadFile( const QString &exportJobId, const QString &fileName )
+NetworkReply *QFieldCloudProjectsModel::downloadFile( const QString &projectId, const QString &fileName )
 {
-  return mCloudConnection->get( QStringLiteral( "/api/v1/qfield-files/export/%1/%2/" ).arg( exportJobId, fileName ) );
+  return mCloudConnection->get( QStringLiteral( "/api/v1/qfield-files/%1/%2/" ).arg( projectId, fileName ) );
 }
 
 NetworkReply *QFieldCloudProjectsModel::uploadFile( const QString &projectId, const QString &fileName )
@@ -1167,7 +1194,7 @@ QHash<int, QByteArray> QFieldCloudProjectsModel::roleNames() const
   roles[ErrorStatusRole] = "ErrorStatus";
   roles[ErrorStringRole] = "ErrorString";
   roles[DownloadProgressRole] = "DownloadProgress";
-  roles[DownloadJobStatusRole] = "DownloadJobStatus";
+  roles[ExportStatusRole] = "ExportStatus";
   roles[UploadAttachmentsProgressRole] = "UploadAttachmentsProgress";
   roles[UploadDeltaProgressRole] = "UploadDeltaProgress";
   roles[UploadDeltaStatusRole] = "UploadDeltaStatus";
@@ -1278,12 +1305,12 @@ QVariant QFieldCloudProjectsModel::data( const QModelIndex &index, int role ) co
       return static_cast<int>( mCloudProjects.at( index.row() ).errorStatus );
     case ErrorStringRole:
       return mCloudProjects.at( index.row() ).errorStatus == DownloadErrorStatus
-          ? mCloudProjects.at( index.row() ).downloadJobStatusString
+          ? mCloudProjects.at( index.row() ).exportStatusString
           : mCloudProjects.at( index.row() ).errorStatus == UploadErrorStatus
             ? mCloudProjects.at( index.row() ).deltaFileUploadStatusString
             : QString();
-    case DownloadJobStatusRole:
-      return mCloudProjects.at( index.row() ).downloadJobStatus;
+    case ExportStatusRole:
+      return mCloudProjects.at( index.row() ).exportStatus;
     case DownloadProgressRole:
     return mCloudProjects.at( index.row() ).downloadProgress;
     case UploadAttachmentsProgressRole:

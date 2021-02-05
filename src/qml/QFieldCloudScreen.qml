@@ -292,7 +292,7 @@ Page {
                   if (item) {
                     if (item.projectLocalPath != '') {
                       qfieldcloudScreen.visible = false
-                      iface.loadProject(item.projectLocalPath);
+                      iface.loadFile(item.projectLocalPath);
                     } else {
                       // fetch remote project
                       displayToast( qsTr( "Downloading project %1" ).arg( item.projectName ) )
@@ -374,7 +374,7 @@ Page {
           onTriggered: {
             if ( projectActions.projectLocalPath != '') {
               qfieldcloudScreen.visible = false
-              iface.loadProject(projectActions.projectLocalPath);
+              iface.loadFile(projectActions.projectLocalPath);
             }
           }
         }

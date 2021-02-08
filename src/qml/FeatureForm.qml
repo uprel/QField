@@ -406,7 +406,10 @@ Page {
                 property bool isEnabled: !!AttributeEditable
                                          && form.state !== 'ReadOnly'
                                          && !( Type === 'relation' && form.model.featureModel.modelMode == FeatureModel.MultiFeatureModel )
-                property var value: AttributeValue
+                property var value: {
+                  console.log("SET_VALUE", AttributeValue)
+                  AttributeValue
+                }
                 property var config: ( EditorWidgetConfig || {} )
                 property var widget: EditorWidget
                 property var field: Field
@@ -456,19 +459,27 @@ Page {
                 target: attributeEditorLoader.item
 
                 function onValueChanged(value, isNull) {
+                  console.log("onValueChanged", value, AttributeValue, isNull)
                   //do not compare AttributeValue and value with strict comparison operators
                   if( ( AttributeValue != value || ( AttributeValue !== undefined && isNull ) ) && !( AttributeValue === undefined && isNull ) )
                   {
+                    console.log("onValueChanged1")
                     var oldValue = AttributeValue
+                    console.log("onValueChanged2")
                     AttributeValue = isNull ? undefined : value
+                    console.log("onValueChanged3")
 
                     valueChanged(Field, oldValue, AttributeValue)
+                    console.log("onValueChanged4")
 
                     if ( !AttributeAllowEdit && form.model.featureModel.modelMode == FeatureModel.MultiFeatureModel ) {
                       AttributeAllowEdit = true;
+                      console.log("onValueChanged4")
                     }
 
+                    console.log("onValueChanged5", AttributeValue, qfieldSettings.autoSave, !dontSave )
                     if ( qfieldSettings.autoSave && !dontSave ) {
+                      console.log("onValueChanged6")
                       // indirect action, no need to check for success and display a toast, the log is enough
                       save()
                     }

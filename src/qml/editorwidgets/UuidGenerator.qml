@@ -38,14 +38,14 @@ EditorWidgetBase {
     wrapMode: TextInput.Wrap
 
     text: {
-      if (value == null) {
+      console.log("WINGET INIT TEXT", value)
         var val = UuidUtils.createUuid();
         valueChanged(val, false)
         return val
       }
       return value
     }
-    readOnly: true
+//    readOnly: true
 
     background: Rectangle {
       y: textField.height - height - textField.bottomPadding / 2
@@ -55,6 +55,7 @@ EditorWidgetBase {
     }
 
     onTextChanged: {
+      console.log('WIDGET TEXT CHANGED', typeof text, text)
       valueChanged( text, text == '' )
     }
   }

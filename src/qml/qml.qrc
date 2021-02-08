@@ -26,6 +26,7 @@
         <file>editorwidgets/ValueMap.qml</file>
         <file>editorwidgets/RelationReference.qml</file>
         <file>editorwidgets/RelationEditor.qml</file>
+        <file>editorwidgets/UuidGenerator.qml</file>
         <file>geometry_editors/VertexEditorToolbar.qml</file>
         <file>geometry_editors/GeometryEditorsToolbar.qml</file>
         <file>geometry_editors/SplitFeatureToolbar.qml</file>

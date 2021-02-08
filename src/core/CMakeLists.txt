@@ -66,6 +66,7 @@ set(QFIELD_CORE_SRCS
   utils/layerutils.cpp
   utils/stringutils.cpp
   utils/urlutils.cpp
+  utils/uuidutils.cpp
   utils/qfieldcloudutils.cpp
   expressionevaluator.cpp
   qgsquick/qgsquickcoordinatetransformer.cpp
@@ -151,6 +152,7 @@ set(QFIELD_CORE_HDRS
   utils/layerutils.h
   utils/stringutils.h
   utils/urlutils.h
+  utils/uuidutils.h
   utils/qfieldcloudutils.h
   expressionevaluator.h
   qgsquick/qgsquickcoordinatetransformer.h

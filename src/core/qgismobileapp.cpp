@@ -102,6 +102,7 @@
 #include "submodel.h"
 #include "trackingmodel.h"
 #include "urlutils.h"
+#include "uuidutils.h"
 #include "valuemapmodel.h"
 #include "vertexmodel.h"
 
@@ -420,6 +421,7 @@ void QgisMobileapp::initDeclarative()
   REGISTER_SINGLETON( "org.qfield", LayerUtils, "LayerUtils" );
   REGISTER_SINGLETON( "org.qfield", StringUtils, "StringUtils" );
   REGISTER_SINGLETON( "org.qfield", UrlUtils, "UrlUtils" );
+  REGISTER_SINGLETON( "org.qfield", UuidUtils, "UuidUtils" );
   REGISTER_SINGLETON( "org.qfield", QFieldCloudUtils, "QFieldCloudUtils" );
 
 

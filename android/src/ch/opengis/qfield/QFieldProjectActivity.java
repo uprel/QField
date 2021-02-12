@@ -152,7 +152,9 @@ public class QFieldProjectActivity extends Activity {
                               file.getName().toLowerCase().endsWith(".jpg") || 
                               file.getName().toLowerCase().endsWith(".png") || 
                               file.getName().toLowerCase().endsWith(".pdf") ||
-                              file.getName().toLowerCase().endsWith(".gpx")){
+                              file.getName().toLowerCase().endsWith(".gpx") ||
+                              file.getName().toLowerCase().endsWith(".jp2") ||
+                              file.getName().toLowerCase().endsWith(".webp")){
                         values.add(new QFieldProjectListItem(file, file.getName(), R.drawable.qfield_logo, QFieldProjectListItem.TYPE_ITEM));
                     }else if (file.isDirectory()){
                         values.add(new QFieldProjectListItem(file, file.getName(), R.drawable.directory, QFieldProjectListItem.TYPE_ITEM));
@@ -232,8 +234,6 @@ public class QFieldProjectActivity extends Activity {
 
             Uri uri = Uri.fromFile(file);
             data.setData(uri);
-            
-            Toast.makeText(this, getString(R.string.loading) + " " + file.getPath(), Toast.LENGTH_LONG).show();
             setResult(Activity.RESULT_OK, data);
 
             String lastUsedProjects = sharedPreferences.getString("LastUsedProjects", null);

@@ -679,13 +679,13 @@ void QgisMobileapp::readProjectFile()
 
               if ( !sublayer->extent().isEmpty() )
               {
-                if ( crs != layer->crs() )
+                if ( crs != sublayer->crs() )
                 {
                   QgsCoordinateTransform transform( sublayer->crs(), crs, mProject->transformContext() );
                   if ( extent.isEmpty() )
-                    extent = transform.transformBoundingBox( layer->extent() );
+                    extent = transform.transformBoundingBox( sublayer->extent() );
                   else
-                    extent.combineExtentWith( transform.transformBoundingBox( layer->extent() ) );
+                    extent.combineExtentWith( transform.transformBoundingBox( sublayer->extent() ) );
                 }
                 else
                 {
@@ -770,13 +770,13 @@ void QgisMobileapp::readProjectFile()
 
               if ( !sublayer->extent().isEmpty() )
               {
-                if ( crs != layer->crs() )
+                if ( crs != sublayer->crs() )
                 {
                   QgsCoordinateTransform transform( sublayer->crs(), crs, mProject->transformContext() );
                   if ( extent.isEmpty() )
-                    extent = transform.transformBoundingBox( layer->extent() );
+                    extent = transform.transformBoundingBox( sublayer->extent() );
                   else
-                    extent.combineExtentWith( transform.transformBoundingBox( layer->extent() ) );
+                    extent.combineExtentWith( transform.transformBoundingBox( sublayer->extent() ) );
                 }
                 else
                 {
@@ -860,25 +860,26 @@ void QgisMobileapp::print( int layoutIndex )
   if ( layoutToPrint->pageCollection()->pageCount() == 0 )
     return;
 
-  layoutToPrint->referenceMap()->setExtent( mMapCanvas->mapSettings()->visibleExtent() );
+  layoutToPrint->referenceMap()->zoomToExtent( mMapCanvas->mapSettings()->visibleExtent() );
+  layoutToPrint->refresh();
 
-  QPrinter printer;
   QString documentsLocation = QStringLiteral( "%1/QField" ).arg( QStandardPaths::writableLocation( QStandardPaths::DocumentsLocation ) );
   QDir documentsDir( documentsLocation );
   if ( !documentsDir.exists() )
     documentsDir.mkpath( "." );
+  const QString destination = documentsLocation  + '/' + layoutToPrint->name() + QStringLiteral( ".pdf" );
 
-  printer.setOutputFileName( documentsLocation  + '/' + layoutToPrint->name() + QStringLiteral( ".pdf" ) );
-
-  QgsLayoutExporter::PrintExportSettings printSettings;
-  printSettings.rasterizeWholeImage = layoutToPrint->customProperty( QStringLiteral( "rasterize" ), false ).toBool();
-
-  layoutToPrint->refresh();
+  QgsLayoutExporter::PdfExportSettings pdfSettings;
+  pdfSettings.rasterizeWholeImage = layoutToPrint->customProperty( QStringLiteral( "rasterize" ), false ).toBool();
+  pdfSettings.dpi = layoutToPrint->renderContext().dpi();
+  pdfSettings.appendGeoreference = true;
+  pdfSettings.exportMetadata = true;
+  pdfSettings.simplifyGeometries = true;
 
   QgsLayoutExporter exporter = QgsLayoutExporter( layoutToPrint );
-  exporter.print( printer, printSettings );
+  exporter.exportToPdf( destination, pdfSettings );
 
-  PlatformUtilities::instance()->open( printer.outputFileName() );
+  PlatformUtilities::instance()->open( destination );
 }
 
 bool QgisMobileapp::event( QEvent *event )

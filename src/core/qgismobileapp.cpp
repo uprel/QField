@@ -679,13 +679,13 @@ void QgisMobileapp::readProjectFile()
 
               if ( !sublayer->extent().isEmpty() )
               {
-                if ( crs != layer->crs() )
+                if ( crs != sublayer->crs() )
                 {
                   QgsCoordinateTransform transform( sublayer->crs(), crs, mProject->transformContext() );
                   if ( extent.isEmpty() )
-                    extent = transform.transformBoundingBox( layer->extent() );
+                    extent = transform.transformBoundingBox( sublayer->extent() );
                   else
-                    extent.combineExtentWith( transform.transformBoundingBox( layer->extent() ) );
+                    extent.combineExtentWith( transform.transformBoundingBox( sublayer->extent() ) );
                 }
                 else
                 {
@@ -770,13 +770,13 @@ void QgisMobileapp::readProjectFile()
 
               if ( !sublayer->extent().isEmpty() )
               {
-                if ( crs != layer->crs() )
+                if ( crs != sublayer->crs() )
                 {
                   QgsCoordinateTransform transform( sublayer->crs(), crs, mProject->transformContext() );
                   if ( extent.isEmpty() )
-                    extent = transform.transformBoundingBox( layer->extent() );
+                    extent = transform.transformBoundingBox( sublayer->extent() );
                   else
-                    extent.combineExtentWith( transform.transformBoundingBox( layer->extent() ) );
+                    extent.combineExtentWith( transform.transformBoundingBox( sublayer->extent() ) );
                 }
                 else
                 {
@@ -844,10 +844,53 @@ void QgisMobileapp::readProjectFile()
 
   emit loadProjectEnded();
 
+  QgsRectangle projectExtent = getProjectExtent( mProjectFilePath );
+  if ( !projectExtent.isEmpty() )
+    extent = projectExtent;
+
   if ( !extent.isEmpty() && extent.width() != 0.0 )
   {
     // Add a bit of buffer so elements don't touch the map edges
     emit setMapExtent( extent.buffered( extent.width() * 0.02 ) );
+  }
+}
+
+QgsRectangle QgisMobileapp::getProjectExtent( const QString &path )
+{
+  QgsRectangle extent;
+
+  QFileInfo fi( path );
+  if ( fi.exists() )
+  {
+    QSettings settings;
+    QStringList parts = settings.value( QStringLiteral( "/qgis/projectExtent/%1/extent" ).arg( path ), QString() ).toString().split( '|' );
+    if ( parts.size() == 4 &&
+         ( SUPPORTED_PROJECT_EXTENSIONS.contains( fi.suffix().toLower() ) ||
+           fi.size() == settings.value( QStringLiteral( "/qgis/projectExtent/%1/filesize" ).arg( path ), 0 ).toLongLong() ) )
+    {
+      extent.setXMinimum( parts[0].toDouble() );
+      extent.setXMaximum( parts[1].toDouble() );
+      extent.setYMinimum( parts[2].toDouble() );
+      extent.setYMaximum( parts[3].toDouble() );
+    }
+  }
+
+  return extent;
+}
+
+void QgisMobileapp::saveProjectExtent( const QgsRectangle &extent )
+{
+  QFileInfo fi( mProjectFilePath );
+  if ( fi.exists() )
+  {
+    QSettings settings;
+    settings.beginGroup( QStringLiteral( "/qgis/projectExtent/%1" ).arg( mProjectFilePath ) );
+    settings.setValue( QStringLiteral( "filesize" ), fi.size() );
+    settings.setValue( QStringLiteral( "extent" ), QStringLiteral( "%1|%2|%3|%4" ).arg( qgsDoubleToString( extent.xMinimum() ),
+                                                                                        qgsDoubleToString( extent.xMaximum() ),
+                                                                                        qgsDoubleToString( extent.yMinimum() ),
+                                                                                        qgsDoubleToString( extent.yMaximum() ) ) );
+    settings.endGroup();
   }
 }
 
@@ -860,25 +903,26 @@ void QgisMobileapp::print( int layoutIndex )
   if ( layoutToPrint->pageCollection()->pageCount() == 0 )
     return;
 
-  layoutToPrint->referenceMap()->setExtent( mMapCanvas->mapSettings()->visibleExtent() );
+  layoutToPrint->referenceMap()->zoomToExtent( mMapCanvas->mapSettings()->visibleExtent() );
+  layoutToPrint->refresh();
 
-  QPrinter printer;
   QString documentsLocation = QStringLiteral( "%1/QField" ).arg( QStandardPaths::writableLocation( QStandardPaths::DocumentsLocation ) );
   QDir documentsDir( documentsLocation );
   if ( !documentsDir.exists() )
     documentsDir.mkpath( "." );
+  const QString destination = documentsLocation  + '/' + layoutToPrint->name() + QStringLiteral( ".pdf" );
 
-  printer.setOutputFileName( documentsLocation  + '/' + layoutToPrint->name() + QStringLiteral( ".pdf" ) );
-
-  QgsLayoutExporter::PrintExportSettings printSettings;
-  printSettings.rasterizeWholeImage = layoutToPrint->customProperty( QStringLiteral( "rasterize" ), false ).toBool();
-
-  layoutToPrint->refresh();
+  QgsLayoutExporter::PdfExportSettings pdfSettings;
+  pdfSettings.rasterizeWholeImage = layoutToPrint->customProperty( QStringLiteral( "rasterize" ), false ).toBool();
+  pdfSettings.dpi = layoutToPrint->renderContext().dpi();
+  pdfSettings.appendGeoreference = true;
+  pdfSettings.exportMetadata = true;
+  pdfSettings.simplifyGeometries = true;
 
   QgsLayoutExporter exporter = QgsLayoutExporter( layoutToPrint );
-  exporter.print( printer, printSettings );
+  exporter.exportToPdf( destination, pdfSettings );
 
-  PlatformUtilities::instance()->open( printer.outputFileName() );
+  PlatformUtilities::instance()->open( destination );
 }
 
 bool QgisMobileapp::event( QEvent *event )

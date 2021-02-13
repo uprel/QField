@@ -293,7 +293,8 @@ ApplicationWindow {
               if ( !gpsLinkButton.linkActive && geometryEditorsToolbar.canvasClicked(point) )
                   return;
 
-              if ( !gpsLinkButton.linkActive && ( ( stateMachine.state === "digitize" && dashBoard.currentLayer ) || stateMachine.state === 'measure' ) && !featureForm.visible )
+              if ( !gpsLinkButton.linkActive && !featureForm.visible &&
+                   ( ( stateMachine.state === "digitize" && digitizingFeature.currentLayer ) || stateMachine.state === 'measure' ) )
               {
                   if ( Number( currentRubberband.model.geometryType ) === QgsWkbTypes.PointGeometry ||
                           Number( currentRubberband.model.geometryType ) === QgsWkbTypes.NullGeometry )
@@ -1142,9 +1143,9 @@ ApplicationWindow {
                 }
                 if( !overlayFeatureFormDrawer.featureForm.featureCreated )
                 {
-                    overlayFeatureFormDrawer.featureForm.resetAttributes();
                     overlayFeatureFormDrawer.featureModel.geometry = digitizingFeature.geometry
                     overlayFeatureFormDrawer.featureModel.applyGeometry()
+                    overlayFeatureFormDrawer.featureForm.resetAttributes()
                     if( overlayFeatureFormDrawer.featureForm.model.constraintsHardValid ){
                       // when the constrainst are fulfilled
                       // indirect action, no need to check for success and display a toast, the log is enough
@@ -1182,8 +1183,8 @@ ApplicationWindow {
             coordinateLocator.flash()
             digitizingFeature.geometry.applyRubberband()
             geometryRequestedItem.requestedGeometry(digitizingFeature.geometry)
-            geometryRequested = false
             digitizingRubberband.model.reset()
+            geometryRequested = false
             return;
         }
 
@@ -1202,9 +1203,9 @@ ApplicationWindow {
 
         if ( !digitizingFeature.suppressFeatureForm() )
         {
-          overlayFeatureFormDrawer.featureModel.resetAttributes()
           overlayFeatureFormDrawer.featureModel.geometry = digitizingFeature.geometry
           overlayFeatureFormDrawer.featureModel.applyGeometry()
+          overlayFeatureFormDrawer.featureModel.resetAttributes()
           overlayFeatureFormDrawer.open()
           overlayFeatureFormDrawer.state = "Add"
           overlayFeatureFormDrawer.featureForm.reset()
@@ -1212,9 +1213,9 @@ ApplicationWindow {
         else
         {
           if ( !overlayFeatureFormDrawer.featureForm.featureCreated ) {
-              overlayFeatureFormDrawer.featureModel.resetAttributes();
               overlayFeatureFormDrawer.featureModel.geometry = digitizingFeature.geometry
               overlayFeatureFormDrawer.featureModel.applyGeometry()
+              overlayFeatureFormDrawer.featureModel.resetAttributes()
               if ( !overlayFeatureFormDrawer.featureModel.create() ) {
                 displayToast( qsTr( "Failed to create feature!" ) )
               }
@@ -1753,6 +1754,22 @@ ApplicationWindow {
           mapCanvas.mapSettings.extent = extent;
       }
     }
+  }
+
+  Timer {
+    id: saveProjectExtentTimer
+
+    interval: 500
+    repeat: false
+    onTriggered: iface.saveProjectExtent(mapCanvas.mapSettings.extent)
+  }
+
+  Connections {
+      target: mapCanvas.mapSettings
+
+      function onExtentChanged() {
+          saveProjectExtentTimer.restart();
+      }
   }
 
   BusyIndicator {

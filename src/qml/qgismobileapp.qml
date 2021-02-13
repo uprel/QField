@@ -1756,6 +1756,22 @@ ApplicationWindow {
     }
   }
 
+  Timer {
+    id: saveProjectExtentTimer
+
+    interval: 500
+    repeat: false
+    onTriggered: iface.saveProjectExtent(mapCanvas.mapSettings.extent)
+  }
+
+  Connections {
+      target: mapCanvas.mapSettings
+
+      function onExtentChanged() {
+          saveProjectExtentTimer.restart();
+      }
+  }
+
   BusyIndicator {
     id: busyIndicator
     anchors.left: mainMenuBar.left

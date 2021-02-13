@@ -23,4 +23,4 @@ then
   ARGS="/tmp/file.qml"
 fi
 
-/usr/local/Qt-5.15.0/bin/qmlformat $ARGS
+/opt/Qt/6.0.0/clang_64/bin/qmlformat $ARGS

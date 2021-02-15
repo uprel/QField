@@ -1735,16 +1735,23 @@ ApplicationWindow {
 
       function onLoadProjectTriggered(path,name) {
         welcomeScreen.visible = false
+
         dashBoard.layerTree.freeze()
         mapCanvasMap.freeze('projectload')
+
         busyMessageText.text = qsTr( "Loading %1" ).arg( name !== '' ? name : path )
         busyMessage.state = "visible"
+
+        projectInfo.filePath = '';
         readProjectTimer.start()
       }
 
-      function onLoadProjectEnded() {
+      function onLoadProjectEnded(path,name) {
         mapCanvasMap.unfreeze('projectload')
         busyMessage.state = "hidden"
+
+        projectInfo.filePath = path;
+
         mapCanvasBackground.color = mapCanvas.mapSettings.backgroundColor
         cloudProjectsModel.currentProjectId = QFieldCloudUtils.getProjectId(qgisProject)
         cloudProjectsModel.refreshProjectModification( cloudProjectsModel.currentProjectId )
@@ -1756,20 +1763,11 @@ ApplicationWindow {
     }
   }
 
-  Timer {
-    id: saveProjectExtentTimer
+  ProjectInfo {
+    id: projectInfo
 
-    interval: 500
-    repeat: false
-    onTriggered: iface.saveProjectExtent(mapCanvas.mapSettings.extent)
-  }
-
-  Connections {
-      target: mapCanvas.mapSettings
-
-      function onExtentChanged() {
-          saveProjectExtentTimer.restart();
-      }
+    mapSettings: mapCanvas.mapSettings
+    layerTree: dashBoard.layerTree
   }
 
   BusyIndicator {

@@ -44,8 +44,6 @@ class AppInterface : public QObject
     Q_INVOKABLE void readProject();
     Q_INVOKABLE void removeRecentProject( const QString &path );
 
-    Q_INVOKABLE void saveProjectExtent( const QgsRectangle &extent );
-
     Q_INVOKABLE void print( int layoutIndex );
 
   public slots:
@@ -56,7 +54,7 @@ class AppInterface : public QObject
 
     void loadProjectTriggered( const QString &path, const QString &name );
 
-    void loadProjectEnded();
+    void loadProjectEnded( const QString &path, const QString &name );
 
     void setMapExtent( const QgsRectangle &extent );
 

@@ -114,10 +114,6 @@ class QgisMobileapp : public QQmlApplicationEngine
      */
     void readProjectFile();
 
-    void saveProjectExtent( const QgsRectangle &extent );
-
-    QgsRectangle getProjectExtent( const QString &path );
-
     void print( int layoutIndex );
 
     bool event( QEvent *event ) override;
@@ -134,7 +130,7 @@ class QgisMobileapp : public QQmlApplicationEngine
     /**
      * Emitted when the project is fully loaded
      */
-    void loadProjectEnded();
+    void loadProjectEnded( const QString &filename, const QString &name );
 
     /**
      * Emitted when a map canvas extent change is needed

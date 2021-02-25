@@ -13,8 +13,10 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
 #include "recentprojectlistmodel.h"
 #include "platformutilities.h"
+#include "qgismobileapp.h"
 #include "qfieldcloudutils.h"
 
 #include <QSettings>
@@ -54,11 +56,22 @@ void RecentProjectListModel::reloadModel()
   for ( int i = 0; i < projectKeys.count(); i++ )
   {
     settings.beginGroup( QString::number( projectKeys.at( i ) ) );
-    const QString path = settings.value( QStringLiteral( "path" ) ).toString();
-    mRecentProjects.append( RecentProject( path.startsWith( QFieldCloudUtils::localCloudDirectory() ) ? CloudProject : LocalProject,
-                                           settings.value( QStringLiteral( "title" ) ).toString(),
-                                           path,
-                                           settings.value( QStringLiteral( "demo" ), false ).toBool() ) );
+
+    QString path = settings.value( QStringLiteral( "path" ) ).toString();
+    QFileInfo fi( path );
+    if ( fi.exists() )
+    {
+      ProjectType projectType = path.startsWith( QFieldCloudUtils::localCloudDirectory() )
+        ? CloudProject
+        : SUPPORTED_PROJECT_EXTENSIONS.contains( fi.suffix() )
+          ? LocalProject
+          : LocalDataset;
+      mRecentProjects.append( RecentProject( projectType,
+                                             settings.value( QStringLiteral( "title" ) ).toString(),
+                                             path,
+                                             settings.value( QStringLiteral( "demo" ), false ).toBool() ) );
+    }
+
     settings.endGroup();
   }
   settings.endGroup();

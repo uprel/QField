@@ -70,7 +70,9 @@ Item {
     focus: visible
 
     onOpened: {
-      searchField.forceActiveFocus()
+      if (resultsList.contentHeight > resultsList.height) {
+        searchField.forceActiveFocus()
+      }
     }
 
     onClosed: {
@@ -225,7 +227,10 @@ Item {
             onClicked: {
               var allowMulti = resultsList.model.allowMulti;
               var popupRef = searchFeaturePopup;
-              var item = resultsList.itemAt(mouse.x, mouse.y)
+              var item = resultsList.itemAt(
+                resultsList.contentX + mouse.x,
+                resultsList.contentY + mouse.y
+              )
 
               if (!item)
                 return;
@@ -239,6 +244,10 @@ Item {
                 popupRef.close()
               }
             }
+          }
+
+          onMovementStarted: {
+            Qt.inputMethod.hide()
           }
         }
       }

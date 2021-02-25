@@ -145,6 +145,8 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
   create();
 #endif
 
+  AppInterface::setInstance( mIface );
+
   //set the authHandler to qfield-handler
   std::unique_ptr<QgsNetworkAuthenticationHandler> handler;
   mAuthRequestHandler = new QFieldAppAuthRequestHandler();
@@ -181,7 +183,7 @@ QgisMobileapp::QgisMobileapp( QgsApplication *app, QObject *parent )
   QFontDatabase::addApplicationFont( ":/fonts/CadastraSymbol-Regular.ttf" );
 
   mProject = QgsProject::instance();
-  mGpkgFlusher = qgis::make_unique<QgsGpkgFlusher>( mProject );
+  mGpkgFlusher = std::make_unique<QgsGpkgFlusher>( mProject );
   mLayerObserver.reset( new LayerObserver( mProject ) );
   mFlatLayerTree = new FlatLayerTreeModel( mProject->layerTreeRoot(), mProject, this );
   mLegendImageProvider = new LegendImageProvider( mFlatLayerTree->layerTreeModel() );
@@ -593,6 +595,8 @@ void QgisMobileapp::readProjectFile()
   const QString suffix = fi.suffix().toLower();
 
   mProject->removeAllMapLayers();
+  mProject->setTitle( QString() );
+
   mTrackingModel->reset();
 
   // Load project file
@@ -612,22 +616,6 @@ void QgisMobileapp::readProjectFile()
       else
         QgsMessageLog::logMessage( tr( "Loading font %1" ).arg( fontFile ) );
     }
-  }
-  else
-  {
-    if ( QFile::exists( PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "basemap.qgs" ) ) )
-    {
-      mProject->read( PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "basemap.qgs" ) );
-    }
-    else if ( QFile::exists( PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "basemap.qgz" ) ) )
-    {
-      mProject->read( PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "basemap.qgz" ) );
-    }
-    else
-    {
-      mProject->clear();
-    }
-    mProject->setTitle( mProjectFileName );
   }
 
   QList<QPair<QString, QString>> projects = recentProjects();
@@ -716,11 +704,16 @@ void QgisMobileapp::readProjectFile()
       for( QgsMapLayer *l : vectorLayers )
       {
         QgsVectorLayer *vlayer = qobject_cast< QgsVectorLayer * >( l );
-        QgsSymbol *symbol = FeatureUtils::defaultSymbol( vlayer );
-        if ( symbol )
+        bool ok;
+        vlayer->loadDefaultStyle( ok );
+        if ( !ok )
         {
-          QgsSingleSymbolRenderer *renderer = new QgsSingleSymbolRenderer( symbol );
-          vlayer->setRenderer( renderer );
+          QgsSymbol *symbol = FeatureUtils::defaultSymbol( vlayer );
+          if ( symbol )
+          {
+            QgsSingleSymbolRenderer *renderer = new QgsSingleSymbolRenderer( symbol );
+            vlayer->setRenderer( renderer );
+          }
         }
       }
 
@@ -804,12 +797,14 @@ void QgisMobileapp::readProjectFile()
         rasterLayers << layer;
       }
 
-      // If the raster size is reasonably small, apply nicer resampling settings
-      if ( fi.size() < 50000000 )
+      for( QgsMapLayer *l : rasterLayers )
       {
-        for( QgsMapLayer *l : rasterLayers )
+        QgsRasterLayer *rlayer = qobject_cast< QgsRasterLayer * >( l );
+        bool ok;
+        rlayer->loadDefaultStyle( ok );
+        if ( !ok && fi.size() < 50000000 )
         {
-          QgsRasterLayer *rlayer = qobject_cast< QgsRasterLayer * >( l );
+          // If the raster size is reasonably small, apply nicer resampling settings
           rlayer->resampleFilter()->setZoomedInResampler( new QgsBilinearRasterResampler() );
           rlayer->resampleFilter()->setZoomedOutResampler( new QgsBilinearRasterResampler() );
           rlayer->resampleFilter()->setMaxOversampling( 2.0 );
@@ -821,14 +816,31 @@ void QgisMobileapp::readProjectFile()
   if ( vectorLayers.size() > 0 || rasterLayers.size() > 0 )
   {
     if ( crs.isValid() )
-      mProject->setCrs( crs );
-
-    if ( mProject->fileName().isEmpty() )
     {
-      // Add a default basemap
-      QgsRasterLayer *layer = new QgsRasterLayer( QStringLiteral( "type=xyz&url=https://a.tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0&crs=EPSG3857" ), QStringLiteral( "OpenStreetMap" ), QLatin1String( "wms" ) );
-      mProject->addMapLayers( QList<QgsMapLayer *>() << layer );
+      if ( QFile::exists( PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "basemap.qgs" ) ) )
+      {
+        mProject->read( PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "basemap.qgs" ) );
+      }
+      else if ( QFile::exists( PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "basemap.qgz" ) ) )
+      {
+        mProject->read( PlatformUtilities::instance()->qfieldDataDir() + QStringLiteral( "basemap.qgz" ) );
+      }
+      else
+      {
+        mProject->clear();
+
+        // Add a default basemap
+        QgsRasterLayer *layer = new QgsRasterLayer( QStringLiteral( "type=xyz&url=https://a.tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0&crs=EPSG3857" ), QStringLiteral( "OpenStreetMap" ), QLatin1String( "wms" ) );
+        mProject->addMapLayers( QList<QgsMapLayer *>() << layer );
+      }
     }
+    else
+    {
+      mProject->clear();
+    }
+
+    mProject->setCrs( crs );
+    mProject->setTitle( mProjectFileName );
 
     mProject->addMapLayers( rasterLayers );
     mProject->addMapLayers( vectorLayers );

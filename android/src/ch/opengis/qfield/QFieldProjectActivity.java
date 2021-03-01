@@ -146,7 +146,7 @@ public class QFieldProjectActivity extends Activity {
                               file.getName().toLowerCase().endsWith(".shp") || 
                               file.getName().toLowerCase().endsWith(".kml") || 
                               file.getName().toLowerCase().endsWith(".kmz") || 
-                              file.getName().toLowerCase().endsWith(".gepjson") || 
+                              file.getName().toLowerCase().endsWith(".geojson") ||
                               file.getName().toLowerCase().endsWith(".json") || 
                               file.getName().toLowerCase().endsWith(".tif") || 
                               file.getName().toLowerCase().endsWith(".jpg") || 
@@ -154,7 +154,8 @@ public class QFieldProjectActivity extends Activity {
                               file.getName().toLowerCase().endsWith(".pdf") ||
                               file.getName().toLowerCase().endsWith(".gpx") ||
                               file.getName().toLowerCase().endsWith(".jp2") ||
-                              file.getName().toLowerCase().endsWith(".webp")){
+                              file.getName().toLowerCase().endsWith(".webp")||
+                              file.getName().toLowerCase().endsWith(".zip")){
                         values.add(new QFieldProjectListItem(file, file.getName(), file.getName().toLowerCase().endsWith(".qgs") || file.getName().toLowerCase().endsWith(".qgz") ? R.drawable.project : R.drawable.dataset, QFieldProjectListItem.TYPE_ITEM));
                     }else if (file.isDirectory()){
                         values.add(new QFieldProjectListItem(file, file.getName(), R.drawable.directory, QFieldProjectListItem.TYPE_ITEM));

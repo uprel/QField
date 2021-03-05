@@ -177,7 +177,7 @@ Page {
                                 case QFieldCloudProjectsModel.ProjectStatus.Downloading:
                                   return Theme.getThemeIcon('ic_cloud_project_download_48dp')
                                 case QFieldCloudProjectsModel.ProjectStatus.Uploading:
-                                  return Theme.getThemeIcon('ic_cloud_project_download_48dp')
+                                  return Theme.getThemeIcon('ic_cloud_project_upload_48dp')
                                 default:
                                   break
                               }

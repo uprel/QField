@@ -9,48 +9,49 @@ Item {
   id: qfieldcloudLogin
   property bool isServerUrlEditingActive: false
 
+  Image {
+    id: sourceImg
+    fillMode: Image.PreserveAspectFit
+    visible: false
+    width: 0
+    height: 0
+    smooth: true
+    opacity: 0.25
+    source: "qrc:/images/qfieldcloud_background.svg"
+    sourceSize.width: 1024
+    sourceSize.height: 1024
+  }
+
+  ShaderEffect {
+      anchors.top: parent.top
+      width: parent.width
+      height: 200
+      property variant source: sourceImg
+      property real frequency: 1
+      property real amplitude: 0.1
+      property real time: 0.0
+      NumberAnimation on time {
+          from: 0; to: Math.PI*2; duration: 5000; loops: Animation.Infinite
+      }
+      fragmentShader: "
+                      varying highp vec2 qt_TexCoord0;
+                      uniform sampler2D source;
+                      uniform lowp float qt_Opacity;
+                      uniform highp float frequency;
+                      uniform highp float amplitude;
+                      uniform highp float time;
+                      void main() {
+                          highp vec2 texCoord = qt_TexCoord0;
+                          texCoord.y = amplitude * sin(time * frequency + texCoord.x * 6.283185) + texCoord.y;
+                          gl_FragColor = texture2D(source, texCoord) * qt_Opacity;
+                      }"
+  }
+
   ColumnLayout {
     id: connectionSettings
     width: parent.width
     Layout.maximumWidth: 410
     spacing: 0
-
-    Image {
-      id: sourceImg
-      fillMode: Image.PreserveAspectFit
-      visible: false
-      width: 0
-      height: 0
-      smooth: true
-      opacity: 0.25
-      source: "qrc:/images/qfieldcloud_background.svg"
-      sourceSize.width: 1024
-      sourceSize.height: 1024
-    }
-
-    ShaderEffect {
-        anchors.fill: parent
-        anchors.leftMargin: -10
-        property variant source: sourceImg
-        property real frequency: 1
-        property real amplitude: 0.1
-        property real time: 0.0
-        NumberAnimation on time {
-            from: 0; to: Math.PI*2; duration: 5000; loops: Animation.Infinite
-        }
-        fragmentShader: "
-                        varying highp vec2 qt_TexCoord0;
-                        uniform sampler2D source;
-                        uniform lowp float qt_Opacity;
-                        uniform highp float frequency;
-                        uniform highp float amplitude;
-                        uniform highp float time;
-                        void main() {
-                            highp vec2 texCoord = qt_TexCoord0;
-                            texCoord.y = amplitude * sin(time * frequency + texCoord.x * 6.283185) + texCoord.y;
-                            gl_FragColor = texture2D(source, texCoord) * qt_Opacity;
-                        }"
-    }
 
     ColumnLayout {
       Layout.fillWidth: true
@@ -160,7 +161,7 @@ Item {
         id: usernamelabel
         Layout.fillWidth: true
         visible: cloudConnection.status === QFieldCloudConnection.Disconnected
-        text: qsTr( "Username" )
+        text: qsTr( "Username or e-mail" )
         horizontalAlignment: Text.AlignHCenter
         font: Theme.defaultFont
         color: 'gray'

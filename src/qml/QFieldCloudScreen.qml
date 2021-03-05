@@ -270,8 +270,8 @@ Page {
                                   }
 
                                   var localChanges = ( LocalDeltasCount > 0 ) ? qsTr('Has changes. ') : ''
-
-                                  return '%1 (%2%3)'.arg(Description).arg(localChanges).arg(status)
+                                  var str = '%1 (%2%3)'.arg(Description).arg(localChanges).arg(status)
+                                  return str.trim()
                                 }
                               }
                               visible: text != ""

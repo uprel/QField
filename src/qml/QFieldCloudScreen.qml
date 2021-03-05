@@ -185,6 +185,8 @@ Page {
                               switch (Checkout) {
                                 case QFieldCloudProjectsModel.LocalCheckout:
                                   return Theme.getThemeIcon('ic_cloud_project_localonly_48dp')
+                                case QFieldCloudProjectsModel.RemoteCheckout:
+                                  return Theme.getThemeIcon('ic_cloud_project_download_48dp')
                                 default:
                                   break
                               }

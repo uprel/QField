@@ -22,6 +22,7 @@
 #include <qgscoordinatereferencesystem.h>
 #include <qgscoordinatetransform.h>
 #include <qgsdistancearea.h>
+#include "qgsexpressioncontextutils.h"
 #include <qgslogger.h>
 #include <qgsvectorlayer.h>
 #include <qgsfeature.h>
@@ -342,4 +343,19 @@ void QgsQuickUtils::selectFeaturesInLayer( QgsVectorLayer *layer, const QList<in
   for ( const int &fid : fids )
     qgsFids << fid;
   layer->selectByIds( qgsFids, behavior );
+}
+
+QString QgsQuickUtils::evaluateExpression( const QString &expression, const QgsFeature &feature, QgsVectorLayer *layer, QgsProject *project )
+{
+  QList<QgsExpressionContextScope *> scopes;
+  scopes << QgsExpressionContextUtils::globalScope();
+  if ( project )
+    scopes << QgsExpressionContextUtils::projectScope( project );
+  if ( layer )
+    scopes << QgsExpressionContextUtils::layerScope( layer );
+
+  QgsExpressionContext context( scopes );
+  context.setFeature( feature );
+  QgsExpression expr( expression );
+  return expr.evaluate( &context ).toString();
 }

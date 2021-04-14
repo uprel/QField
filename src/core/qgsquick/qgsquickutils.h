@@ -212,6 +212,15 @@ class QgsQuickUtils: public QObject
      */
     Q_INVOKABLE static void selectFeaturesInLayer( QgsVectorLayer *layer, const QList<int> &fids, QgsVectorLayer::SelectBehavior behavior = QgsVectorLayer::SetSelection );
 
+    /**
+     * Evalutes and returns the value of a given expression.
+     * \param expression the expression string to evaluate
+     * \param feature an optional feature to be used in the evaluation
+     * \param layer an optional layer to be used in the evaluation
+     * \param project an optional project to be used in the evaluation
+     */
+    Q_INVOKABLE QString evaluateExpression( const QString &expression, const QgsFeature &feature = QgsFeature(), QgsVectorLayer *layer = nullptr, QgsProject *project = nullptr );
+
   private:
     static void formatToMetricDistance( double srcDistance,
                                         QgsUnitTypes::DistanceUnit srcUnits,

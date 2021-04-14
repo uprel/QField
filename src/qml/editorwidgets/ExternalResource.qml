@@ -7,6 +7,8 @@ import org.qgis 1.0
 import org.qfield 1.0
 import Theme 1.0
 
+import Utils 1.0
+
 import "."
 import ".." as QField
 
@@ -15,6 +17,31 @@ EditorWidgetBase {
   anchors.right: parent.right
 
   height: Math.max(isImage? image.height : linkField.height, button_camera.height, button_gallery.height)
+
+  property string prefixToRelativePath: {
+    var path = ""
+    if (config["RelativeStorage"] === 1 ) {
+      return qgisProject.homePath
+    } else if (config["RelativeStorage"] === 2 ) {
+      var expression = undefined
+      var collection = config["PropertyCollection"]
+      var props = collection["properties"]
+      if (props) {
+        if(props["propertyRootPath"]) {
+          var rootPathProps = props["propertyRootPath"]
+          expression = rootPathProps["expression"]
+        }
+      }
+
+      if (expression) {
+        Utils.evaluateExpression(expression, currentFeature, currentLayer, qgisProject)
+      } else {
+        config["DefaultRoot"] ? config["DefaultRoot"] : qgisProject.homePath
+      }
+    }
+
+    return path !== "" && !path.endsWith("/") ? path + "/" : path
+  }
 
   property PictureSource __pictureSource
   property ViewStatus __viewStatus
@@ -25,10 +52,8 @@ EditorWidgetBase {
       return true
     } else if ( config.UseLink ) {
       return false
-    } else if ( 
-        FileUtils.mimeTypeName( qgisProject.homePath + '/' + value ).startsWith("image/") 
-        || FileUtils.fileName( qgisProject.homePath + '/' + value ) === ''
-    ) {
+    } else if ( FileUtils.mimeTypeName( prefixToRelativePath + value ).startsWith("image/") ||
+                FileUtils.fileName( prefixToRelativePath + value ) === '' ) {
       return true
     } else {
       return false
@@ -39,13 +64,13 @@ EditorWidgetBase {
   property var currentValue: value
   onCurrentValueChanged: {
       if ( isImage ) {
-          if ( value === undefined || FileUtils.fileName( qgisProject.homePath + '/' + value ) === '' ) {
+          if ( value === undefined || FileUtils.fileName( prefixToRelativePath + value ) === '' ) {
               image.width = 24
               image.opacity = 0.25
               image.anchors.topMargin = 11
               image.source = Theme.getThemeIcon("ic_photo_notavailable_black_24dp")
               geoTagBadge.visible = false
-          } else if ( image.status === Image.Error || !FileUtils.fileExists( qgisProject.homePath + '/' + value ) ) {
+          } else if ( image.status === Image.Error || !FileUtils.fileExists( prefixToRelativePath + value ) ) {
               image.width = 24
               image.opacity = 0.25
               image.anchors.topMargin = 11
@@ -55,7 +80,7 @@ EditorWidgetBase {
               image.width = 220
               image.opacity = 1
               image.anchors.topMargin = 0
-              image.source= 'file://' + qgisProject.homePath + '/' + value
+              image.source= 'file://' + prefixToRelativePath + value
               geoTagBadge.hasGeoTag = ExifTools.hasGeoTag(qgisProject.homePath + '/' + value)
               geoTagBadge.visible = true
           }
@@ -97,23 +122,22 @@ EditorWidgetBase {
     visible: !isImage
     anchors.left: parent.left
     anchors.right: parent.right
-    color: FileUtils.fileExists(qgisProject.homePath + '/' + value) ? Theme.hyperlinkBlue : 'gray'
+    color: FileUtils.fileExists(prefixToRelativePath + value) ? Theme.hyperlinkBlue : 'gray'
 
     text: {
-      var fieldValue = value
-
-      if(UrlUtils.isRelativeOrFileUrl(fieldValue))
+      var fieldValue = prefixToRelativePath + value
+      if (UrlUtils.isRelativeOrFileUrl(fieldValue)) {
         fieldValue = config.FullUrl ? fieldValue : FileUtils.fileName(fieldValue)
-
+      }
       fieldValue = StringUtils.insertLinks(fieldValue)
 
       hasValue = !!fieldValue
-
       return hasValue ? fieldValue : qsTr('No Value')
     }
 
     font.pointSize: Theme.defaultFont.pointSize
     font.italic: !hasValue
+    font.underline: FileUtils.fileExists(qgisProject.homePath + '/' + value) || FileUtils.fileExists(value)
 
     background: Rectangle {
       y: linkField.height - height - linkField.bottomPadding / 2
@@ -126,23 +150,16 @@ EditorWidgetBase {
       anchors.fill: parent
 
       onClicked: {
-        if ( ! value )
+        if ( !value )
           return
 
-        // matches `http://...` but not `file://...` paths
-        if ( ! UrlUtils.isRelativeOrFileUrl(value)) {
+        if (!UrlUtils.isRelativeOrFileUrl(value)) { // matches `http://...` but not `file://...` paths
           Qt.openUrlExternally(value)
-          return
-        }
-
-        // relative paths `./path/to/image.jpg` or 'path/to/image.jpg`
-        if (FileUtils.fileExists(qgisProject.homePath + '/' + value) ) {
-          __viewStatus = platformUtilities.open(qgisProject.homePath + '/' + value)
-          return
+        } else if (FileUtils.fileExists(prefixToRelativePath + value)) {
+          __viewStatus = platformUtilities.open(prefixToRelativePath + value)
         }
       }
     }
-
   }
 
   FontMetrics {

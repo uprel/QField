@@ -144,7 +144,9 @@ Page {
 
             anchors.fill: parent
 
-            model: cloudProjectsModel
+            model: QFieldCloudProjectsFilterModel {
+                projectsModel: cloudProjectsModel
+            }
             clip: true
 
             onMovingChanged: {

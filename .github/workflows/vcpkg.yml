@@ -17,10 +17,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019, ubuntu-18.04]
         include:
           - os: 'windows-2019'
             triplet: 'x64-windows'
+            mono: ''
+            build-type: 'Release'
+            vcpkg-root: 'C:'
+
+          - os: 'windows-2019'
+            triplet: 'x64-uwp'
             mono: ''
             build-type: 'Release'
             vcpkg-root: 'C:'
@@ -127,7 +132,7 @@ jobs:
       - name: Install dependencies and generate project files
         run: |
           #          ${{ env.VCPKG_ROOT }}/vcpkg install --debug gdal
-          cmake -S "${{ github.workspace }}" -B "${{ env.CMAKE_BUILD_DIR }}" -GNinja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake" -DVCPKG_OVERLAY_PORTS="${{ github.workspace }}/vcpkg_overlay"
+          cmake -S "${{ github.workspace }}" -B "${{ env.CMAKE_BUILD_DIR }}" -GNinja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake" -DVCPKG_OVERLAY_PORTS="${{ github.workspace }}/vcpkg_overlay" -DVCPKG_TARGET_TRIPLET="${{ matrix.triplet }}"
 
       - name: Upload Build Logs
         uses: actions/upload-artifact@v2

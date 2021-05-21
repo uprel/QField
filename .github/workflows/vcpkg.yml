@@ -73,12 +73,16 @@ jobs:
           git checkout FETCH_HEAD
 
       - name: Cache vcpkg
-        uses: pat-s/always-upload-cache@v2.1.3
+        id: cache-vcpkg-tool
+        uses: actions/cache@v2.1.3
         with:
-          path: ${{ env.VCPKG_ROOT }}/buildtrees/_vcpkg
+          path: |
+            ${{ env.VCPKG_ROOT }}/vcpkg
+            ${{ env.VCPKG_ROOT }}/vcpkg.exe
           key: ${{ runner.os }}-${{ hashFiles('.git/modules/vcpkg/HEAD') }}
 
       - name: Bootstrap vcpkg
+        if: steps.cache-vcpkg-tool.outputs.cache-hit != 'true'
         shell: bash
         working-directory: ${{ env.VCPKG_ROOT }}
         run: |

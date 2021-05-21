@@ -126,8 +126,7 @@ jobs:
       - name: Install deps
         if: ${{ matrix.triplet == 'x64-osx' }}
         run: |
-          brew install automake
-          brew upgrade bison
+          brew install automake bison
           /bin/bash -c "sudo xcode-select -s /Applications/Xcode_12.app/Contents/Developer"
 
       - name: Install dependencies and generate project files

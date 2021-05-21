@@ -33,7 +33,6 @@
         "name": "qt5-winextras",
         "platform": "windows"
       },
-      "qwt",
       "qca",
       "qscintilla",
       "qtkeychain"

@@ -186,9 +186,6 @@ elseif(VCPKG_TARGET_IS_LINUX OR VCPKG_TARGET_IS_OSX) # Build in UNIX
     )
 
     find_program(PYUIC5 pyuic5)
-    if (NOT PYUIC5)
-        INSTALL_PROGRAM(pyqt5-dev-tools)
-    endif()
 
     find_program(PYRCC5 pyrcc5)
 

@@ -65,7 +65,11 @@
         },
         {
             "name": "gui",
-            "description": "Determines whether the QGIS gui should be built"
+            "description": "Determines whether the QGIS gui should be built",
+            "dependencies":
+            [
+                "qwt"
+            ]
         },
         {
             "name": "desktop",

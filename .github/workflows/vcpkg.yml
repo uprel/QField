@@ -112,18 +112,16 @@ jobs:
         if: ${{ matrix.triplet == 'x64-linux' }}
         run: |
           df -h
-          rm -rf /tmp/workspace
           rm -rf /usr/share/dotnet/sdk
-          sudo apt remove llvm-* ghc-* google-chrome-* dotnet-sdk-*
+          rm -rf /usr/share/rust
+          rm -rf /usr/share/swift
+          sudo apt remove llvm-* ghc-* google-chrome-* dotnet-sdk-* azure-cli google-cloud-sdk adoptopenjdk-12-hotspot adoptopenjdk-11-hotspot google-chrome-stable firefox
           dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
           du -a /usr/share | sort -n -r | head -n 10
           du -a /usr/local/share | sort -n -r | head -n 10
           df -h
           sudo apt clean
           df -h
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
 
       - name: Install deps
         if: ${{ matrix.triplet == 'x64-linux' }}

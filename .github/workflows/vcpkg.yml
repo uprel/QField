@@ -139,6 +139,10 @@ jobs:
           # ${{ env.VCPKG_ROOT }}/vcpkg install --debug qt5-declarative
           cmake -S "${{ github.workspace }}" -B "${{ env.CMAKE_BUILD_DIR }}" -GNinja -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake" -DVCPKG_OVERLAY_PORTS="${{ github.workspace }}/vcpkg_overlay" -DVCPKG_TARGET_TRIPLET="${{ matrix.triplet }}"
 
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+
       - name: Upload Build Logs
         uses: actions/upload-artifact@v2
         if: always()
